@@ -1,0 +1,1948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Discipline Tracker Pro</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    :root {
+      --bg-dark: #0a0a0a;
+      --bg-darker: #080808;
+      --card-bg: #1a1a1a;
+      --border: #2a2a2a;
+      --text-primary: #f5f5f7;
+      --text-secondary: #a0a0a8;
+      --text-accent: #ffffff;
+      --success: #28a745;
+      --warning: #ffc107;
+      --danger: #dc3545;
+      --primary: #007bff;
+      --info: #17a2b8;
+      --purple: #6f42c1;
+      --yellow: #ffcc00;
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      --shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+      --shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #121212 0%, #0d0d0d 100%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 20px;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    .app-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      background: rgba(25, 25, 25, 0.95);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .app-title {
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-accent);
+    }
+
+    .app-title i {
+      color: var(--primary);
+    }
+
+    .view-controls {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      background: linear-gradient(145deg, #2a2a2a, #222);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      padding: 10px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+      font-size: 0.95rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-hover);
+      border-color: #3a3a3a;
+    }
+
+    .btn-primary {
+      background: linear-gradient(145deg, #0066cc, #0052a3);
+      border-color: #007bff;
+    }
+
+    .btn-success {
+      background: linear-gradient(145deg, #28a745, #1e7e34);
+      border-color: var(--success);
+    }
+
+    .btn-warning {
+      background: linear-gradient(145deg, #ffc107, #e0a800);
+      border-color: var(--warning);
+    }
+
+    .btn-danger {
+      background: linear-gradient(145deg, #dc3545, #c82333);
+      border-color: var(--danger);
+    }
+
+    /* Motivation Container */
+    .motivation-container {
+      text-align: center;
+      padding: 1.5rem;
+      margin: 0 auto 2.5rem;
+      max-width: 900px;
+      font-size: 1.1rem;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(25, 25, 25, 0.9), rgba(30, 30, 30, 0.9));
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    #motivation-line {
+      transition: opacity 0.5s ease;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+
+    /* Date Display */
+    .date-display {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding: 1.2rem;
+      background: rgba(25, 25, 25, 0.9);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+
+    #current-date {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: var(--text-accent);
+    }
+
+    #current-time {
+      font-family: 'Courier New', monospace;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--primary);
+      background: rgba(0, 123, 255, 0.1);
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 123, 255, 0.3);
+    }
+
+    /* Main Layout */
+    .main-content {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    /* Stopwatch Container */
+    .stopwatch-container {
+      background: linear-gradient(135deg, rgba(25, 25, 25, 0.95), rgba(30, 30, 30, 0.95));
+      border-radius: 20px;
+      padding: 2rem;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+
+    .stopwatch-display {
+      font-size: 4rem;
+      font-family: 'Courier New', monospace;
+      font-weight: 700;
+      text-align: center;
+      color: var(--primary);
+      margin: 1.5rem 0;
+      padding: 1.5rem;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 16px;
+      border: 2px solid var(--border);
+      text-shadow: 0 0 20px rgba(0, 123, 255, 0.3);
+      letter-spacing: 2px;
+    }
+
+    .task-input-container {
+      display: flex;
+      gap: 12px;
+      margin: 2rem 0;
+    }
+
+    .task-input {
+      flex: 1;
+      padding: 1rem 1.5rem;
+      font-size: 1.1rem;
+      background: rgba(15, 15, 15, 0.8);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      color: var(--text-primary);
+      transition: var(--transition);
+    }
+
+    .task-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    }
+
+    .controls-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 2rem;
+    }
+
+    .controls-container .btn {
+      padding: 1rem;
+      font-size: 1.1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .active-task-indicator {
+      background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(25, 135, 84, 0.1));
+      border: 1px solid var(--success);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+    }
+
+    /* Favorites Section */
+    .section-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--text-accent);
+      margin: 2rem 0 1rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .favorites-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px;
+      margin-bottom: 2rem;
+    }
+
+    .favorite-card {
+      background: rgba(30, 30, 30, 0.8);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .favorite-card:hover {
+      transform: translateY(-3px);
+      background: rgba(40, 40, 40, 0.9);
+      border-color: var(--primary);
+    }
+
+    .favorite-name {
+      font-weight: 500;
+    }
+
+    .favorite-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Today's Tasks */
+    .tasks-list {
+      max-height: 400px;
+      overflow-y: auto;
+      padding-right: 8px;
+    }
+
+    .tasks-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .tasks-list::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 3px;
+    }
+
+    .tasks-list::-webkit-scrollbar-thumb {
+      background: var(--primary);
+      border-radius: 3px;
+    }
+
+    .task-card {
+      background: rgba(30, 30, 30, 0.8);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem;
+      margin-bottom: 10px;
+      transition: var(--transition);
+    }
+
+    .task-card:hover {
+      transform: translateX(5px);
+      background: rgba(40, 40, 40, 0.9);
+    }
+
+    .task-card.sleep {
+      border-left: 4px solid var(--purple);
+    }
+
+    .task-card.productive {
+      border-left: 4px solid var(--success);
+    }
+
+    .task-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .task-name {
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+
+    .task-duration {
+      font-family: 'Courier New', monospace;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .task-time {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .task-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    /* Stats Dashboard */
+    .stats-dashboard {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, rgba(25, 25, 25, 0.9), rgba(30, 30, 30, 0.9));
+      border-radius: 16px;
+      padding: 1.5rem;
+      border: 1px solid var(--border);
+    }
+
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .stat-label {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+    }
+
+    .stat-productive { color: var(--success); }
+    .stat-sleep { color: var(--purple); }
+    .stat-total { color: var(--primary); }
+    .stat-streak { color: var(--warning); }
+
+    /* Graphs Container */
+    .graphs-container {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .graph-card {
+      background: linear-gradient(135deg, rgba(25, 25, 25, 0.95), rgba(30, 30, 30, 0.95));
+      border-radius: 20px;
+      padding: 1.5rem;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+
+    .graph-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .graph-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--text-accent);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .graph-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .range-select {
+      background: rgba(15, 15, 15, 0.8);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .graph-canvas-container {
+      position: relative;
+      height: 250px;
+      width: 100%;
+    }
+
+    /* Streak Popup */
+    .streak-popup-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      backdrop-filter: blur(5px);
+    }
+
+    .streak-popup {
+      background: linear-gradient(135deg, #1a1a1a, #222);
+      border-radius: 24px;
+      padding: 3rem;
+      max-width: 500px;
+      width: 90%;
+      text-align: center;
+      border: 1px solid var(--border);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      animation: popupAppear 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes popupAppear {
+      from { transform: scale(0.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .streak-icon {
+      font-size: 4rem;
+      color: var(--warning);
+      margin-bottom: 1.5rem;
+    }
+
+    .streak-count {
+      font-size: 5rem;
+      font-weight: 800;
+      color: var(--warning);
+      margin: 1rem 0;
+      text-shadow: 0 0 30px rgba(255, 204, 0, 0.3);
+    }
+
+    .streak-message {
+      font-size: 1.2rem;
+      color: var(--text-primary);
+      margin: 1.5rem 0;
+      line-height: 1.6;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.9);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+
+    .modal {
+      background: linear-gradient(135deg, #1a1a1a, #222);
+      border-radius: 20px;
+      max-width: 900px;
+      width: 100%;
+      max-height: 90vh;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .modal-header {
+      padding: 2rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(30, 30, 30, 0.9);
+    }
+
+    .modal-title {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--text-accent);
+    }
+
+    .modal-content {
+      padding: 2rem;
+      overflow-y: auto;
+      max-height: 60vh;
+    }
+
+    .modal-footer {
+      padding: 1.5rem 2rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      background: rgba(30, 30, 30, 0.9);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1200px) {
+      .main-content {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 12px;
+      }
+
+      .stopwatch-display {
+        font-size: 3rem;
+      }
+
+      .controls-container {
+        grid-template-columns: 1fr;
+      }
+
+      .stats-dashboard {
+        grid-template-columns: 1fr;
+      }
+
+      .favorites-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      }
+
+      .task-input-container {
+        flex-direction: column;
+      }
+    }
+
+    @media (max-width: 480px) {
+      header {
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .app-title {
+        font-size: 1.4rem;
+      }
+
+      .stopwatch-display {
+        font-size: 2.5rem;
+      }
+
+      .motivation-container {
+        padding: 1rem;
+        font-size: 1rem;
+      }
+
+      .date-display {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Streak Popup -->
+  <div class="streak-popup-overlay" id="streak-popup">
+    <div class="streak-popup">
+      <div class="streak-icon">
+        <i class="fas fa-fire"></i>
+      </div>
+      <h2>STREAK MAINTAINED</h2>
+      <div class="streak-count" id="streak-count">0</div>
+      <div class="streak-message" id="streak-message"></div>
+      <button class="btn btn-primary" id="close-streak">CONTINUE</button>
+    </div>
+  </div>
+
+  <!-- Motivation -->
+  <div class="motivation-container">
+    <div id="motivation-line">Excellence is not a singular act, but a habit. You are what you repeatedly do.</div>
+  </div>
+
+  <!-- Main App Container -->
+  <div class="app-container">
+    <!-- Header -->
+    <header>
+      <h1 class="app-title">
+        <i class="fas fa-stopwatch"></i> DISCIPLINE TRACKER PRO
+      </h1>
+      <div class="view-controls">
+        <button class="btn btn-primary" id="view-report">
+          <i class="fas fa-chart-bar"></i> Report
+        </button>
+        <button class="btn" id="export-data">
+          <i class="fas fa-download"></i> Export
+        </button>
+      </div>
+    </header>
+
+    <!-- Date and Time Display -->
+    <div class="date-display">
+      <div id="current-date">February 8, 2026</div>
+      <div id="current-time">14:30:45</div>
+    </div>
+
+    <!-- Stats Dashboard -->
+    <div class="stats-dashboard">
+      <div class="stat-card">
+        <div class="stat-value stat-productive" id="productive-time">0h 0m</div>
+        <div class="stat-label">Productive Today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value stat-sleep" id="sleep-time">0h 0m</div>
+        <div class="stat-label">Sleep Today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value stat-total" id="total-time">0h 0m</div>
+        <div class="stat-label">Total Tracked</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value stat-streak" id="streak-display">0</div>
+        <div class="stat-label">Day Streak</div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Stopwatch Section -->
+      <div class="stopwatch-container">
+        <!-- Stopwatch Display -->
+        <div class="stopwatch-display" id="stopwatch">00:00:00</div>
+
+        <!-- Task Input -->
+        <div class="task-input-container">
+          <input type="text" class="task-input" id="task-input" placeholder="Enter task name..." maxlength="50" />
+          <button class="btn btn-success" id="add-favorite" title="Add to favorites">
+            <i class="far fa-star"></i>
+          </button>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls-container">
+          <button class="btn btn-success" id="start-btn">
+            <i class="fas fa-play"></i>
+            <span>Start</span>
+          </button>
+          <button class="btn btn-danger" id="stop-btn" disabled>
+            <i class="fas fa-stop"></i>
+            <span>Stop</span>
+          </button>
+          <button class="btn btn-primary" id="sleep-btn">
+            <i class="fas fa-bed"></i>
+            <span>Sleep</span>
+          </button>
+        </div>
+
+        <!-- Active Task Indicator -->
+        <div id="active-task-indicator" style="display: none;">
+          <div class="active-task-indicator">
+            <strong><i class="fas fa-running"></i> Active Task:</strong>
+            <span id="active-task-name"></span>
+            <br>
+            <small>Started at: <span id="active-task-start"></span></small>
+          </div>
+        </div>
+
+        <!-- Favorites Section -->
+        <h3 class="section-title">
+          <i class="fas fa-star"></i> Quick Start Favorites
+        </h3>
+        <div class="favorites-grid" id="favorites-grid">
+          <!-- Favorites will be dynamically inserted here -->
+        </div>
+
+        <!-- Today's Tasks -->
+        <h3 class="section-title">
+          <i class="fas fa-tasks"></i> Today's Activities
+        </h3>
+        <div class="tasks-list" id="tasks-list">
+          <!-- Tasks will be dynamically inserted here -->
+        </div>
+      </div>
+
+      <!-- Graphs Section -->
+      <div class="graphs-container">
+        <!-- Productivity Graph -->
+        <div class="graph-card">
+          <div class="graph-header">
+            <div class="graph-title">
+              <i class="fas fa-chart-line"></i>
+              Productivity Trend
+            </div>
+            <div class="graph-controls">
+              <select class="range-select" id="prod-range">
+                <option value="7d">7 Days</option>
+                <option value="30d">30 Days</option>
+                <option value="3m">3 Months</option>
+                <option value="6m">6 Months</option>
+                <option value="1y">1 Year</option>
+              </select>
+            </div>
+          </div>
+          <div class="graph-canvas-container">
+            <canvas id="productivity-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Sleep Graph -->
+        <div class="graph-card">
+          <div class="graph-header">
+            <div class="graph-title">
+              <i class="fas fa-bed"></i>
+              Sleep Analysis
+            </div>
+            <div class="graph-controls">
+              <select class="range-select" id="sleep-range">
+                <option value="7d">7 Days</option>
+                <option value="30d">30 Days</option>
+                <option value="3m">3 Months</option>
+                <option value="6m">6 Months</option>
+                <option value="1y">1 Year</option>
+              </select>
+            </div>
+          </div>
+          <div class="graph-canvas-container">
+            <canvas id="sleep-chart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Report Modal -->
+  <div class="modal-overlay" id="report-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Performance Report</h2>
+        <button class="btn" id="close-modal" style="position: absolute; right: 20px; top: 20px;">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-content" id="report-content">
+        <!-- Report content will be dynamically inserted -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn" id="print-report">
+          <i class="fas fa-print"></i> Print
+        </button>
+        <button class="btn btn-primary" id="close-report">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==============================================
+    // Professional Discipline Tracker Pro - FIXED LOGIC
+    // ==============================================
+
+    // Configuration
+    const CONFIG = {
+      STORAGE_KEYS: {
+        TASKS: 'discipline_tracker_tasks',
+        FAVORITES: 'discipline_tracker_favorites',
+        STREAK: 'discipline_tracker_streak',
+        LAST_ACTIVITY: 'discipline_tracker_last_activity',
+        ACTIVE_TASK: 'discipline_tracker_active_task'
+      },
+      MOTIVATION_INTERVAL: 15000, // 15 seconds
+      CHART_RANGES: {
+        '7d': 7,
+        '30d': 30,
+        '3m': 90,
+        '6m': 180,
+        '1y': 365
+      }
+    };
+
+    // Motivation Lines - Updated with comeback/discipline tone
+    const MOTIVATION_LINES = [
+      "Excellence is not a singular act, but a habit. You are what you repeatedly do.",
+      "Discipline is the bridge between goals and accomplishment.",
+      "The comeback is always stronger than the setback. Keep grinding.",
+      "No shortcuts. No excuses. Just relentless execution.",
+      "Consistency beats intensity every single time. Show up daily.",
+      "Pain is temporary. Quitting lasts forever. Choose your hard.",
+      "Your discipline today is your freedom tomorrow.",
+      "Grind in silence, let success make the noise.",
+      "Fall seven times, stand up eight. This is discipline.",
+      "Small daily improvements lead to staggering long-term results.",
+      "The only limit is the one you set yourself. Break it.",
+      "Action is the antidote to anxiety. Keep moving forward.",
+      "Don't stop when you're tired. Stop when you're done.",
+      "The only bad workout is the one that didn't happen.",
+      "Success is the sum of small efforts, repeated day in and day out.",
+      "Your future is created by what you do today, not tomorrow.",
+      "The harder you work for something, the greater you'll feel when you achieve it.",
+      "Discipline is doing what needs to be done even when you don't want to.",
+      "Be so good they can't ignore you. Master your craft.",
+      "The only way to achieve the impossible is to believe it is possible."
+    ];
+
+    // Streak Messages
+    const STREAK_MESSAGES = {
+      1: "Day one. This is where it begins.",
+      3: "Three days strong. Momentum is building.",
+      7: "One week! Discipline is becoming a habit.",
+      14: "Two weeks. You're building something real.",
+      21: "Three weeks. This is who you are now.",
+      30: "One month of discipline. Elite status.",
+      60: "Two months. You've transformed.",
+      90: "Three months. Unstoppable.",
+      100: "Century streak. This is your identity.",
+      365: "One year. You've mastered yourself."
+    };
+
+    // ==============================================
+    // Core Application
+    // ==============================================
+
+    class DisciplineTracker {
+      constructor() {
+        this.state = {
+          tasks: this.loadFromStorage(CONFIG.STORAGE_KEYS.TASKS) || [],
+          favorites: this.loadFromStorage(CONFIG.STORAGE_KEYS.FAVORITES) || [],
+          streak: parseInt(this.loadFromStorage(CONFIG.STORAGE_KEYS.STREAK)) || 0,
+          lastActivityDate: this.loadFromStorage(CONFIG.STORAGE_KEYS.LAST_ACTIVITY),
+          activeTask: this.loadFromStorage(CONFIG.STORAGE_KEYS.ACTIVE_TASK),
+          charts: { productivity: null, sleep: null },
+          chartRanges: { productivity: '7d', sleep: '7d' }
+        };
+
+        this.elements = this.initializeElements();
+        this.stopwatch = new StopwatchManager(this);
+        this.taskManager = new TaskManager(this);
+        this.uiManager = new UIManager(this);
+        this.graphManager = new GraphManager(this);
+        this.eventManager = new EventManager(this);
+      }
+
+      initializeElements() {
+        const elements = {};
+        const ids = [
+          'stopwatch', 'task-input', 'start-btn', 'stop-btn', 'sleep-btn',
+          'add-favorite', 'active-task-indicator', 'active-task-name',
+          'active-task-start', 'favorites-grid', 'tasks-list', 'productive-time',
+          'sleep-time', 'total-time', 'streak-display', 'current-date',
+          'current-time', 'motivation-line', 'prod-range', 'sleep-range',
+          'productivity-chart', 'sleep-chart', 'streak-popup', 'streak-count',
+          'streak-message', 'close-streak', 'view-report', 'export-data',
+          'report-modal', 'report-content', 'close-modal', 'print-report',
+          'close-report'
+        ];
+
+        ids.forEach(id => {
+          elements[id] = document.getElementById(id);
+        });
+
+        return elements;
+      }
+
+      loadFromStorage(key) {
+        try {
+          const data = localStorage.getItem(key);
+          return data ? JSON.parse(data) : null;
+        } catch (error) {
+          console.error(`Error loading from localStorage key "${key}":`, error);
+          return null;
+        }
+      }
+
+      saveToStorage(key, data) {
+        try {
+          localStorage.setItem(key, JSON.stringify(data));
+        } catch (error) {
+          console.error(`Error saving to localStorage key "${key}":`, error);
+        }
+      }
+
+      async initialize() {
+        // Check for Chart.js
+        if (!window.Chart) {
+          try {
+            await this.loadChartJS();
+          } catch (error) {
+            console.warn('Chart.js not available, graphs will be disabled');
+          }
+        }
+
+        // Initialize components
+        this.uiManager.initialize();
+        this.taskManager.initialize();
+        this.graphManager.initialize();
+        this.eventManager.initialize();
+
+        // Update streak based on existing tasks
+        this.updateStreak();
+
+        // Resume active task if exists
+        if (this.state.activeTask) {
+          this.stopwatch.resumeActiveTask(this.state.activeTask);
+        }
+
+        console.log('Discipline Tracker Pro initialized successfully');
+      }
+
+      async loadChartJS() {
+        return new Promise((resolve, reject) => {
+          if (window.Chart) return resolve();
+
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      }
+
+      // New streak calculation based on actual task dates
+      updateStreak(showPopup = false) {
+        const dates = [...new Set(this.state.tasks.map(t => t.date))].sort();
+        
+        if (dates.length === 0) {
+          this.state.streak = 0;
+          this.state.lastActivityDate = null;
+          this.elements['streak-display'].textContent = 0;
+          this.saveToStorage(CONFIG.STORAGE_KEYS.STREAK, 0);
+          this.saveToStorage(CONFIG.STORAGE_KEYS.LAST_ACTIVITY, null);
+          return;
+        }
+
+        const today = this.getDateString();
+        const dateSet = new Set(dates);
+        let streak = 0;
+        let currentDate = dateSet.has(today) ? today : this.getDateString(new Date(Date.now() - 86400000)); // yesterday if no task today
+
+        // Count consecutive days backwards from currentDate
+        while (dateSet.has(currentDate)) {
+          streak++;
+          const prevDate = new Date(currentDate);
+          prevDate.setDate(prevDate.getDate() - 1);
+          currentDate = this.getDateString(prevDate);
+        }
+
+        const oldStreak = this.state.streak;
+        this.state.streak = streak;
+        this.state.lastActivityDate = dateSet.has(today) ? today : (dates.length > 0 ? dates[dates.length-1] : null);
+        
+        this.saveToStorage(CONFIG.STORAGE_KEYS.STREAK, streak);
+        this.saveToStorage(CONFIG.STORAGE_KEYS.LAST_ACTIVITY, this.state.lastActivityDate);
+        
+        this.elements['streak-display'].textContent = streak;
+
+        // Show popup only if streak increased and we want to show it
+        if (showPopup && streak > oldStreak && streak > 1) {
+          this.uiManager.showStreakPopup();
+        }
+      }
+
+      // Fixed: local date string, not UTC
+      getDateString(date = new Date()) {
+        const d = new Date(date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+
+      formatDuration(minutes) {
+        const hours = Math.floor(minutes / 60);
+        const mins = Math.floor(minutes % 60);
+        return `${hours}h ${mins.toString().padStart(2, '0')}m`;
+      }
+
+      formatTime(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+
+      formatDate(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      }
+    }
+
+    // ==============================================
+    // Stopwatch Manager
+    // ==============================================
+
+    class StopwatchManager {
+      constructor(app) {
+        this.app = app;
+        this.startTime = null;
+        this.elapsedTime = 0;
+        this.animationFrameId = null;
+        this.isRunning = false;
+      }
+
+      start(taskName = null, isSleep = false) {
+        if (this.isRunning) {
+          alert('A task is already running. Stop it first.');
+          return;
+        }
+
+        const name = taskName || this.app.elements['task-input'].value.trim();
+        if (!name) {
+          alert('Please enter a task name');
+          return;
+        }
+
+        this.startTime = Date.now();
+        this.isRunning = true;
+        this.elapsedTime = 0;
+
+        this.app.state.activeTask = {
+          name,
+          startTime: this.startTime,
+          isSleep
+        };
+
+        this.app.saveToStorage(CONFIG.STORAGE_KEYS.ACTIVE_TASK, this.app.state.activeTask);
+
+        // Update UI
+        this.app.elements['start-btn'].disabled = true;
+        this.app.elements['stop-btn'].disabled = false;
+        this.app.elements['task-input'].disabled = true;
+        this.app.elements['active-task-name'].textContent = name;
+        this.app.elements['active-task-start'].textContent = this.app.formatTime(this.startTime);
+        this.app.elements['active-task-indicator'].style.display = 'block';
+
+        if (isSleep) {
+          this.app.elements['sleep-btn'].disabled = true;
+        }
+
+        this.update();
+      }
+
+      update() {
+        if (!this.isRunning) return;
+
+        const currentTime = Date.now();
+        this.elapsedTime = currentTime - this.startTime;
+
+        const hours = Math.floor(this.elapsedTime / 3600000);
+        const minutes = Math.floor((this.elapsedTime % 3600000) / 60000);
+        const seconds = Math.floor((this.elapsedTime % 60000) / 1000);
+
+        this.app.elements['stopwatch'].textContent = 
+          `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+        this.animationFrameId = requestAnimationFrame(() => this.update());
+      }
+
+      stop() {
+        if (!this.isRunning) return;
+
+        this.isRunning = false;
+        if (this.animationFrameId) {
+          cancelAnimationFrame(this.animationFrameId);
+        }
+
+        const endTime = Date.now();
+        const duration = Math.round((endTime - this.startTime) / 60000); // minutes
+
+        // Save task - using local date from startTime
+        const task = {
+          id: Date.now().toString(),
+          name: this.app.state.activeTask.name,
+          startTime: this.startTime,
+          endTime,
+          duration,
+          date: this.app.getDateString(new Date(this.startTime)),
+          isSleep: this.app.state.activeTask.isSleep
+        };
+
+        this.app.taskManager.addTask(task);
+
+        // Reset
+        this.reset();
+      }
+
+      reset() {
+        this.isRunning = false;
+        this.startTime = null;
+        this.elapsedTime = 0;
+        
+        if (this.animationFrameId) {
+          cancelAnimationFrame(this.animationFrameId);
+        }
+
+        this.app.state.activeTask = null;
+        this.app.saveToStorage(CONFIG.STORAGE_KEYS.ACTIVE_TASK, null);
+
+        // Reset UI
+        this.app.elements['stopwatch'].textContent = '00:00:00';
+        this.app.elements['start-btn'].disabled = false;
+        this.app.elements['stop-btn'].disabled = true;
+        this.app.elements['task-input'].disabled = false;
+        this.app.elements['sleep-btn'].disabled = false;
+        this.app.elements['active-task-indicator'].style.display = 'none';
+        this.app.elements['task-input'].value = '';
+        this.app.elements['task-input'].focus();
+      }
+
+      resumeActiveTask(activeTask) {
+        if (!activeTask || !activeTask.startTime) return;
+
+        const elapsed = Date.now() - activeTask.startTime;
+        if (elapsed < 0) return; // Invalid time
+
+        this.startTime = activeTask.startTime;
+        this.isRunning = true;
+        this.app.state.activeTask = activeTask;
+
+        this.app.elements['start-btn'].disabled = true;
+        this.app.elements['stop-btn'].disabled = false;
+        this.app.elements['task-input'].disabled = true;
+        this.app.elements['active-task-name'].textContent = activeTask.name;
+        this.app.elements['active-task-start'].textContent = this.app.formatTime(activeTask.startTime);
+        this.app.elements['active-task-indicator'].style.display = 'block';
+
+        if (activeTask.isSleep) {
+          this.app.elements['sleep-btn'].disabled = true;
+        }
+
+        this.update();
+      }
+
+      startSleep() {
+        this.start("Sleep", true);
+      }
+    }
+
+    // ==============================================
+    // Task Manager
+    // ==============================================
+
+    class TaskManager {
+      constructor(app) {
+        this.app = app;
+      }
+
+      initialize() {
+        this.updateStats();
+        this.renderTasks();
+        this.renderFavorites();
+      }
+
+      addTask(task) {
+        this.app.state.tasks.push(task);
+        this.app.saveToStorage(CONFIG.STORAGE_KEYS.TASKS, this.app.state.tasks);
+        
+        this.updateStats();
+        this.renderTasks();
+        this.app.graphManager.updateCharts();
+        this.app.updateStreak(true); // show popup if streak increased
+      }
+
+      deleteTask(taskId) {
+        this.app.state.tasks = this.app.state.tasks.filter(task => task.id !== taskId);
+        this.app.saveToStorage(CONFIG.STORAGE_KEYS.TASKS, this.app.state.tasks);
+        
+        this.updateStats();
+        this.renderTasks();
+        this.app.graphManager.updateCharts();
+        this.app.updateStreak(); // update streak but no popup
+      }
+
+      updateStats() {
+        const today = this.app.getDateString();
+        const todayTasks = this.app.state.tasks.filter(task => task.date === today);
+
+        const productiveTime = todayTasks
+          .filter(task => !task.isSleep)
+          .reduce((total, task) => total + task.duration, 0);
+
+        const sleepTime = todayTasks
+          .filter(task => task.isSleep)
+          .reduce((total, task) => total + task.duration, 0);
+
+        const totalTime = productiveTime + sleepTime;
+
+        this.app.elements['productive-time'].textContent = this.app.formatDuration(productiveTime);
+        this.app.elements['sleep-time'].textContent = this.app.formatDuration(sleepTime);
+        this.app.elements['total-time'].textContent = this.app.formatDuration(totalTime);
+      }
+
+      renderTasks() {
+        const today = this.app.getDateString();
+        const todayTasks = this.app.state.tasks
+          .filter(task => task.date === today)
+          .sort((a, b) => b.startTime - a.startTime);
+
+        const container = this.app.elements['tasks-list'];
+        container.innerHTML = '';
+
+        if (todayTasks.length === 0) {
+          container.innerHTML = `
+            <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+              <i class="fas fa-clipboard-list" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+              <p>No tasks recorded today</p>
+              <p style="font-size: 0.9rem;">Start tracking your first task</p>
+            </div>
+          `;
+          return;
+        }
+
+        todayTasks.forEach(task => {
+          const taskElement = document.createElement('div');
+          taskElement.className = `task-card ${task.isSleep ? 'sleep' : 'productive'}`;
+          
+          taskElement.innerHTML = `
+            <div class="task-header">
+              <div class="task-name">${task.isSleep ? '💤 ' : '⚡ '}${task.name}</div>
+              <div class="task-duration">${this.app.formatDuration(task.duration)}</div>
+            </div>
+            <div class="task-time">
+              ${this.app.formatTime(task.startTime)} - ${this.app.formatTime(task.endTime)}
+            </div>
+            <div class="task-actions">
+              <button class="btn delete-task-btn" data-id="${task.id}">
+                <i class="fas fa-trash"></i> Delete
+              </button>
+            </div>
+          `;
+
+          container.appendChild(taskElement);
+        });
+
+        // Add event listeners for delete buttons
+        document.querySelectorAll('.delete-task-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const taskId = e.currentTarget.getAttribute('data-id');
+            this.deleteTask(taskId);
+          });
+        });
+      }
+
+      renderFavorites() {
+        const container = this.app.elements['favorites-grid'];
+        container.innerHTML = '';
+
+        if (this.app.state.favorites.length === 0) {
+          container.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-secondary);">
+              <i class="far fa-star" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
+              <p>No favorites yet</p>
+              <p style="font-size: 0.9rem;">Add tasks to favorites for quick start</p>
+            </div>
+          `;
+          return;
+        }
+
+        this.app.state.favorites.forEach((favorite, index) => {
+          const favoriteElement = document.createElement('div');
+          favoriteElement.className = 'favorite-card';
+          
+          favoriteElement.innerHTML = `
+            <div class="favorite-name">${favorite}</div>
+            <div class="favorite-actions">
+              <button class="btn start-favorite-btn" data-name="${favorite}">
+                <i class="fas fa-play"></i>
+              </button>
+              <button class="btn remove-favorite-btn" data-index="${index}">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          `;
+
+          container.appendChild(favoriteElement);
+        });
+
+        // Add event listeners
+        document.querySelectorAll('.start-favorite-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const taskName = e.currentTarget.getAttribute('data-name');
+            this.app.stopwatch.start(taskName);
+          });
+        });
+
+        document.querySelectorAll('.remove-favorite-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const index = parseInt(e.currentTarget.getAttribute('data-index'));
+            this.removeFavorite(index);
+          });
+        });
+      }
+
+      addFavorite() {
+        const taskName = this.app.elements['task-input'].value.trim();
+        if (!taskName) {
+          alert('Please enter a task name to add to favorites');
+          return;
+        }
+
+        if (this.app.state.favorites.includes(taskName)) {
+          alert('This task is already in your favorites');
+          return;
+        }
+
+        this.app.state.favorites.push(taskName);
+        this.app.saveToStorage(CONFIG.STORAGE_KEYS.FAVORITES, this.app.state.favorites);
+        this.renderFavorites();
+      }
+
+      removeFavorite(index) {
+        this.app.state.favorites.splice(index, 1);
+        this.app.saveToStorage(CONFIG.STORAGE_KEYS.FAVORITES, this.app.state.favorites);
+        this.renderFavorites();
+      }
+    }
+
+    // ==============================================
+    // UI Manager
+    // ==============================================
+
+    class UIManager {
+      constructor(app) {
+        this.app = app;
+        this.currentMotivationIndex = 0;
+      }
+
+      initialize() {
+        this.updateDateTime();
+        this.startMotivationRotation();
+      }
+
+      updateDateTime() {
+        const now = new Date();
+        
+        // Update date
+        this.app.elements['current-date'].textContent = 
+          now.toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          });
+
+        // Update time every second
+        const updateTime = () => {
+          const now = new Date();
+          const timeString = now.toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            second: '2-digit' 
+          });
+          this.app.elements['current-time'].textContent = timeString;
+        };
+        
+        updateTime();
+        setInterval(updateTime, 1000);
+      }
+
+      startMotivationRotation() {
+        // Initial motivation
+        this.updateMotivation();
+
+        // Rotate every 15 seconds
+        setInterval(() => {
+          this.updateMotivation();
+        }, CONFIG.MOTIVATION_INTERVAL);
+      }
+
+      updateMotivation() {
+        const element = this.app.elements['motivation-line'];
+        
+        // Fade out
+        element.style.opacity = '0';
+        
+        setTimeout(() => {
+          // Select next motivation line
+          let newIndex;
+          do {
+            newIndex = Math.floor(Math.random() * MOTIVATION_LINES.length);
+          } while (newIndex === this.currentMotivationIndex && MOTIVATION_LINES.length > 1);
+          
+          this.currentMotivationIndex = newIndex;
+          element.textContent = MOTIVATION_LINES[this.currentMotivationIndex];
+          
+          // Fade in
+          element.style.opacity = '1';
+        }, 500);
+      }
+
+      showStreakPopup() {
+        const streak = this.app.state.streak;
+        const message = STREAK_MESSAGES[streak] || 
+          `${streak} days strong. Keep going.`;
+
+        this.app.elements['streak-count'].textContent = streak;
+        this.app.elements['streak-message'].textContent = message;
+        this.app.elements['streak-popup'].style.display = 'flex';
+      }
+
+      hideStreakPopup() {
+        this.app.elements['streak-popup'].style.display = 'none';
+      }
+
+      showReport() {
+        const today = new Date();
+        const month = today.getMonth();
+        const year = today.getFullYear();
+        const monthName = today.toLocaleString('default', { month: 'long' });
+
+        const monthTasks = this.app.state.tasks.filter(task => {
+          const taskDate = new Date(task.startTime);
+          return taskDate.getMonth() === month && taskDate.getFullYear() === year;
+        });
+
+        const productiveTasks = monthTasks.filter(task => !task.isSleep);
+        const sleepTasks = monthTasks.filter(task => task.isSleep);
+        
+        const productiveMinutes = productiveTasks.reduce((sum, task) => sum + task.duration, 0);
+        const sleepMinutes = sleepTasks.reduce((sum, task) => sum + task.duration, 0);
+        const totalMinutes = productiveMinutes + sleepMinutes;
+
+        let reportHTML = `
+          <h3 style="margin-bottom: 1.5rem; color: var(--text-accent);">${monthName} ${year} Performance Report</h3>
+          
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
+            <div style="background: rgba(40, 167, 69, 0.1); padding: 1rem; border-radius: 12px; border: 1px solid var(--success);">
+              <div style="font-size: 2rem; font-weight: 700; color: var(--success);">${productiveTasks.length}</div>
+              <div style="font-size: 0.9rem; color: var(--text-secondary);">Productive Tasks</div>
+            </div>
+            
+            <div style="background: rgba(111, 66, 193, 0.1); padding: 1rem; border-radius: 12px; border: 1px solid var(--purple);">
+              <div style="font-size: 2rem; font-weight: 700; color: var(--purple);">${sleepTasks.length}</div>
+              <div style="font-size: 0.9rem; color: var(--text-secondary);">Sleep Sessions</div>
+            </div>
+            
+            <div style="background: rgba(0, 123, 255, 0.1); padding: 1rem; border-radius: 12px; border: 1px solid var(--primary);">
+              <div style="font-size: 2rem; font-weight: 700; color: var(--primary);">${this.app.formatDuration(totalMinutes)}</div>
+              <div style="font-size: 0.9rem; color: var(--text-secondary);">Total Time</div>
+            </div>
+            
+            <div style="background: rgba(255, 193, 7, 0.1); padding: 1rem; border-radius: 12px; border: 1px solid var(--warning);">
+              <div style="font-size: 2rem; font-weight: 700; color: var(--warning);">${this.app.state.streak}</div>
+              <div style="font-size: 0.9rem; color: var(--text-secondary);">Day Streak</div>
+            </div>
+          </div>
+          
+          <h4 style="margin: 1.5rem 0 1rem; color: var(--text-accent);">Daily Breakdown</h4>
+          <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="background: rgba(30, 30, 30, 0.8);">
+                  <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border);">Date</th>
+                  <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border);">Productive</th>
+                  <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border);">Sleep</th>
+                  <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border);">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+
+        // Calculate daily stats
+        const dailyStats = {};
+        monthTasks.forEach(task => {
+          if (!dailyStats[task.date]) {
+            dailyStats[task.date] = { productive: 0, sleep: 0 };
+          }
+          
+          if (task.isSleep) {
+            dailyStats[task.date].sleep += task.duration;
+          } else {
+            dailyStats[task.date].productive += task.duration;
+          }
+        });
+
+        // Sort dates
+        const sortedDates = Object.keys(dailyStats).sort();
+
+        sortedDates.forEach(date => {
+          const stats = dailyStats[date];
+          const total = stats.productive + stats.sleep;
+          const dateObj = new Date(date);
+          
+          reportHTML += `
+            <tr>
+              <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);">
+                ${dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' })}
+              </td>
+              <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--success);">
+                ${this.app.formatDuration(stats.productive)}
+              </td>
+              <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--purple);">
+                ${this.app.formatDuration(stats.sleep)}
+              </td>
+              <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); font-weight: 600;">
+                ${this.app.formatDuration(total)}
+              </td>
+            </tr>
+          `;
+        });
+
+        reportHTML += `
+              </tbody>
+            </table>
+          </div>
+        `;
+
+        this.app.elements['report-content'].innerHTML = reportHTML;
+        this.app.elements['report-modal'].style.display = 'flex';
+      }
+
+      hideReport() {
+        this.app.elements['report-modal'].style.display = 'none';
+      }
+
+      exportData() {
+        const csvContent = [
+          ['Date', 'Task Name', 'Start Time', 'End Time', 'Duration (minutes)', 'Type'].join(','),
+          ...this.app.state.tasks.map(task => [
+            task.date,
+            `"${task.name}"`,
+            new Date(task.startTime).toLocaleString(),
+            new Date(task.endTime).toLocaleString(),
+            task.duration,
+            task.isSleep ? 'Sleep' : 'Productive'
+          ].join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `discipline-data-${this.app.getDateString()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    }
+
+    // ==============================================
+    // Graph Manager
+    // ==============================================
+
+    class GraphManager {
+      constructor(app) {
+        this.app = app;
+        this.charts = { productivity: null, sleep: null };
+      }
+
+      initialize() {
+        if (!window.Chart) {
+          console.warn('Chart.js not loaded, graphs disabled');
+          return;
+        }
+
+        this.createCharts();
+        this.setupChartControls();
+      }
+
+      createCharts() {
+        // Productivity Chart - Smooth line with shaded area, no points
+        const prodCtx = this.app.elements['productivity-chart'].getContext('2d');
+        
+        // Create gradient for the fill
+        const gradient = prodCtx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(0, 123, 255, 0.2)');
+        gradient.addColorStop(1, 'rgba(0, 123, 255, 0.05)');
+        
+        this.charts.productivity = new Chart(prodCtx, {
+          type: 'line',
+          data: this.getProductivityData('7d'),
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: 'rgba(20, 20, 30, 0.95)',
+                titleColor: '#fff',
+                bodyColor: '#fff',
+                borderColor: 'rgba(0, 123, 255, 0.5)',
+                borderWidth: 1,
+                cornerRadius: 8,
+                padding: 12
+              }
+            },
+            scales: {
+              x: {
+                grid: { 
+                  color: 'rgba(255, 255, 255, 0.08)',
+                  drawBorder: false
+                },
+                ticks: { 
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  font: { size: 11 },
+                  maxRotation: 45
+                }
+              },
+              y: {
+                beginAtZero: true,
+                grid: { 
+                  color: 'rgba(255, 255, 255, 0.08)',
+                  drawBorder: false
+                },
+                ticks: { 
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  font: { size: 11 },
+                  padding: 10,
+                  callback: value => value + 'h'
+                },
+                title: {
+                  display: true,
+                  text: 'Hours Logged',
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  font: { size: 12, weight: '600' }
+                }
+              }
+            },
+            elements: {
+              point: {
+                radius: 0, // No points
+                hoverRadius: 0
+              },
+              line: {
+                tension: 0.3 // Smooth curve
+              }
+            }
+          }
+        });
+
+        // Sleep Chart - Bar chart with purple theme
+        const sleepCtx = this.app.elements['sleep-chart'].getContext('2d');
+        this.charts.sleep = new Chart(sleepCtx, {
+          type: 'bar',
+          data: this.getSleepData('7d'),
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: 'rgba(20, 20, 30, 0.95)',
+                titleColor: '#fff',
+                bodyColor: '#fff',
+                borderColor: 'rgba(111, 66, 193, 0.5)',
+                borderWidth: 1,
+                cornerRadius: 8,
+                padding: 12,
+                callbacks: {
+                  label: function(context) {
+                    const hours = context.parsed.y;
+                    const mins = Math.round((hours % 1) * 60);
+                    return `Sleep: ${Math.floor(hours)}h ${mins}m`;
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { 
+                  color: 'rgba(255, 255, 255, 0.08)',
+                  drawBorder: false
+                },
+                ticks: { 
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  font: { size: 11 },
+                  maxRotation: 45
+                }
+              },
+              y: {
+                beginAtZero: true,
+                max: 12,
+                grid: { 
+                  color: 'rgba(255, 255, 255, 0.08)',
+                  drawBorder: false
+                },
+                ticks: { 
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  font: { size: 11 },
+                  padding: 10,
+                  stepSize: 2,
+                  callback: value => value + 'h'
+                },
+                title: {
+                  display: true,
+                  text: 'Duration (hours)',
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  font: { size: 12, weight: '600' }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      getProductivityData(range = '7d') {
+        const days = CONFIG.CHART_RANGES[range] || 7;
+        const data = [];
+        const labels = [];
+        const today = new Date();
+
+        for (let i = days - 1; i >= 0; i--) {
+          const date = new Date(today);
+          date.setDate(today.getDate() - i);
+          const dateStr = this.app.getDateString(date);
+          
+          const dayTasks = this.app.state.tasks.filter(task => task.date === dateStr);
+          const productiveMinutes = dayTasks
+            .filter(task => !task.isSleep)
+            .reduce((sum, task) => sum + task.duration, 0);
+          
+          labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+          data.push(parseFloat((productiveMinutes / 60).toFixed(1)));
+        }
+
+        // Create gradient for the dataset
+        const gradient = this.charts.productivity?.ctx?.createLinearGradient(0, 0, 0, 400);
+        if (gradient) {
+          gradient.addColorStop(0, 'rgba(0, 123, 255, 0.2)');
+          gradient.addColorStop(1, 'rgba(0, 123, 255, 0.05)');
+        }
+
+        return {
+          labels,
+          datasets: [{
+            label: 'Productive Hours',
+            data,
+            borderColor: 'rgb(0, 123, 255)',
+            backgroundColor: gradient || 'rgba(0, 123, 255, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 0,
+            pointHoverRadius: 0
+          }]
+        };
+      }
+
+      getSleepData(range = '7d') {
+        const days = CONFIG.CHART_RANGES[range] || 7;
+        const data = [];
+        const labels = [];
+        const today = new Date();
+
+        for (let i = days - 1; i >= 0; i--) {
+          const date = new Date(today);
+          date.setDate(today.getDate() - i);
+          const dateStr = this.app.getDateString(date);
+          
+          const dayTasks = this.app.state.tasks.filter(task => task.date === dateStr);
+          const sleepMinutes = dayTasks
+            .filter(task => task.isSleep)
+            .reduce((sum, task) => sum + task.duration, 0);
+          
+          labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+          data.push(parseFloat((sleepMinutes / 60).toFixed(1)));
+        }
+
+        return {
+          labels,
+          datasets: [{
+            label: 'Sleep Hours',
+            data,
+            backgroundColor: 'rgba(111, 66, 193, 0.7)',
+            borderColor: 'rgb(111, 66, 193)',
+            borderWidth: 1,
+            borderRadius: 4
+          }]
+        };
+      }
+
+      updateCharts() {
+        if (!this.charts.productivity || !this.charts.sleep) return;
+
+        const prodRange = this.app.elements['prod-range'].value;
+        const sleepRange = this.app.elements['sleep-range'].value;
+
+        this.charts.productivity.data = this.getProductivityData(prodRange);
+        this.charts.sleep.data = this.getSleepData(sleepRange);
+
+        this.charts.productivity.update('none');
+        this.charts.sleep.update('none');
+      }
+
+      setupChartControls() {
+        this.app.elements['prod-range'].addEventListener('change', () => {
+          this.updateCharts();
+        });
+
+        this.app.elements['sleep-range'].addEventListener('change', () => {
+          this.updateCharts();
+        });
+      }
+    }
+
+    // ==============================================
+    // Event Manager
+    // ==============================================
+
+    class EventManager {
+      constructor(app) {
+        this.app = app;
+      }
+
+      initialize() {
+        this.bindEvents();
+      }
+
+      bindEvents() {
+        // Stopwatch controls
+        this.app.elements['start-btn'].addEventListener('click', () => this.app.stopwatch.start());
+        this.app.elements['stop-btn'].addEventListener('click', () => this.app.stopwatch.stop());
+        this.app.elements['sleep-btn'].addEventListener('click', () => this.app.stopwatch.startSleep());
+        
+        // Favorites
+        this.app.elements['add-favorite'].addEventListener('click', () => this.app.taskManager.addFavorite());
+        
+        // Task input - Enter key to start
+        this.app.elements['task-input'].addEventListener('keypress', (e) => {
+          if (e.key === 'Enter' && !this.app.stopwatch.isRunning) {
+            this.app.stopwatch.start();
+          }
+        });
+        
+        // Report and export
+        this.app.elements['view-report'].addEventListener('click', () => this.app.uiManager.showReport());
+        this.app.elements['export-data'].addEventListener('click', () => this.app.uiManager.exportData());
+        
+        // Modal controls
+        this.app.elements['close-modal'].addEventListener('click', () => this.app.uiManager.hideReport());
+        this.app.elements['close-report'].addEventListener('click', () => this.app.uiManager.hideReport());
+        this.app.elements['print-report'].addEventListener('click', () => window.print());
+        
+        // Streak popup
+        this.app.elements['close-streak'].addEventListener('click', () => this.app.uiManager.hideStreakPopup());
+        
+        // Close modal on overlay click
+        this.app.elements['report-modal'].addEventListener('click', (e) => {
+          if (e.target === this.app.elements['report-modal']) {
+            this.app.uiManager.hideReport();
+          }
+        });
+      }
+    }
+
+    // ==============================================
+    // Initialize Application
+    // ==============================================
+
+    // Create global app instance
+    window.app = new DisciplineTracker();
+
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+      window.app.initialize();
+    });
+
+    // Handle page visibility changes
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        // Refresh stats when returning to the page
+        if (window.app.taskManager) {
+          window.app.taskManager.updateStats();
+          window.app.taskManager.renderTasks();
+          window.app.taskManager.renderFavorites();
+        }
+      }
+    });
+
+    // Handle window unload
+    window.addEventListener('beforeunload', () => {
+      // Clean up animation frames
+      if (window.app && window.app.stopwatch && window.app.stopwatch.animationFrameId) {
+        cancelAnimationFrame(window.app.stopwatch.animationFrameId);
+      }
+    });
+  </script>
+</body>
+</html>
