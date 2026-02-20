@@ -893,6 +893,18 @@
           date: task.date || this.getDateString(new Date(startTime)),
           sourceDevice: task.sourceDevice || this.syncManager?.getDeviceId?.() || 'local',
           createdAt: task.createdAt || Date.now(),
+          updatedAt: Date.now(),
+          growth_category: growthCategory,
+          confidence,
+          waste_level: wasteLevel,
+          graph_tag: graphTag,
+          classification_json: {
+            activity: task.description || task.name || '',
+            category: growthCategory,
+            confidence,
+            waste_level: wasteLevel,
+            graph_tag: graphTag
+          }
           updatedAt: Date.now()
         };
       }
@@ -1190,6 +1202,7 @@
           <p><strong>Improvement vs previous month:</strong> Productive ${this.app.formatDuration(r.improvement.productiveDeltaMinutes)} | Waste ${this.app.formatDuration(r.improvement.wasteDeltaMinutes)}</p>
           <p><strong>Best productive day:</strong> ${best} | <strong>Worst waste day:</strong> ${worst}</p>
           <p><strong>Sleep consistency:</strong> longest >=7h streak is ${r.sleepConsistency.longestStreakDays} days</p>
+          <p><strong>Sleep (last 7 days):</strong> Avg ${this.app.formatDuration(sleepInsights.averageLast7)} | ${sleepInsights.sleepDebt > 0 ? `Debt ${this.app.formatDuration(sleepInsights.sleepDebt)}` : `Surplus ${this.app.formatDuration(Math.abs(sleepInsights.sleepDebt))}`} | Consistency ${sleepInsights.consistency}</p>
           <p><strong>Alerts:</strong> ${r.alerts.underProductivity ? `Under productivity (${r.alerts.underProductiveDays} days below ${this.app.formatDuration(r.alerts.thresholdMinutes)})` : 'None'}</p>
           <h4 style="margin-top:1rem;">Category Totals</h4><ul>${catLines}</ul>
           <h4>Productive Work Breakdown</h4><ul>${prodBreak}</ul>
