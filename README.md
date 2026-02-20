@@ -1,7 +1,7 @@
 # Discipline Tracker Pro
 
-A professional, feature-rich task and sleep tracking web application built with vanilla HTML, CSS, and JavaScript. Track your productivity, monitor sleep patterns, maintain daily discipline streaks, and compete against your SHADOW - all in your browser with local data persistence.
-
+A professional, feature-rich task and sleep tracking web application built with vanilla HTML, CSS, and JavaScript. Track your productivity, monitor sleep patterns, maintain daily discipline streaks, and compete against your SHADOW - all in your browser with local data persistence. 
+{{{{{BUT MAKE SURE TO GIVE THE CREDIT }}}}
 ## 🎯 Features
 
 ### ⏱️ Time Tracking
@@ -259,6 +259,8 @@ The application automatically adapts to different screen sizes with optimized la
 ## 📄 License
 
 Free to use, modify, and distribute. No attribution required.
+
+{{{{{BUT MAKE SURE TO GIVE THE CREDIT }}}}
 
 ---
 
