@@ -410,6 +410,9 @@
     .shadow-momentum-positive { color: var(--success); }
     .shadow-momentum-negative { color: var(--danger); }
     .shadow-momentum-flat { color: var(--warning); }
+    .shadow-pressure-low { color: var(--success); }
+    .shadow-pressure-mid { color: var(--warning); }
+    .shadow-pressure-high { color: var(--danger); }
     .shadow-badge {
       display: inline-flex;
       padding: 5px 10px;
@@ -748,9 +751,14 @@
           <div class="shadow-line">Weekly 7-Day Avg: <strong id="shadow-weekly-average">0h 00m</strong></div>
           <div class="shadow-line">Momentum: <strong id="shadow-momentum" class="shadow-momentum-flat">Stable</strong></div>
           <div class="shadow-line">Gap vs Shadow: <strong id="shadow-gap" class="shadow-gap-equal">0h 00m</strong></div>
+          <div class="shadow-line">Weekly Delta vs Shadow: <strong id="shadow-weekly-gap" class="shadow-gap-equal">0h 00m</strong></div>
+          <div class="shadow-line">Today's Target: <strong id="shadow-target">0h 00m</strong></div>
           <div class="shadow-line">Reached: <strong id="shadow-percent">0%</strong></div>
           <div>
-            <span class="shadow-badge" id="shadow-status">Below Identity</span>
+            <span class="shadow-badge" id="shadow-status">OUT OF RANGE</span>
+            <span class="shadow-badge" id="shadow-pressure">Pressure: High</span>
+            <span class="shadow-badge" id="shadow-my-wins">My Wins (Month): 0</span>
+            <span class="shadow-badge" id="shadow-last-win">Since Last Win: 0d</span>
           </div>
           <div class="shadow-progress">
             <div class="shadow-progress-fill" id="shadow-progress-fill"></div>
@@ -760,10 +768,12 @@
           <div class="shadow-card-title">🌑 The Shadow</div>
           <div class="shadow-main-value" id="shadow-average">0h 00m</div>
           <div>
-            <span class="shadow-badge" id="shadow-rank">Rank: Recruit</span>
+            <span class="shadow-badge" id="shadow-rank">Rank: Initiate</span>
           </div>
           <div>
-            <span class="shadow-badge" id="shadow-badge">Builder</span>
+            <span class="shadow-badge" id="shadow-badge">Baseline</span>
+            <span class="shadow-badge" id="shadow-wins">Shadow Wins (Month): 0</span>
+            <span class="shadow-badge" id="shadow-loss-streak">Shadow Lead Streak: 0d</span>
           </div>
           <div class="shadow-line">Your Strongest Historical 7-Day Standard</div>
           <div class="shadow-line" id="shadow-note">Calculated from real historical data only</div>
@@ -1094,7 +1104,7 @@
       }
       initializeElements() {
         const elements = {};
-        ['stopwatch','task-input','start-btn','stop-btn','sleep-btn','add-favorite','active-task-indicator','active-task-name','active-task-start','favorites-grid','tasks-list','productive-time','sleep-time','total-time','streak-display','current-date','current-time','motivation-line','prod-range','prod-filter','prod-filter-total','sleep-range','productivity-chart','sleep-chart','streak-popup','streak-count','streak-message','close-streak','view-report','export-data','report-modal','report-content','close-modal','print-report','close-report','shadow-current-card','shadow-standard-card','shadow-current-minutes','shadow-percent','shadow-gap','shadow-status','shadow-progress-fill','shadow-average','shadow-rank','shadow-badge','shadow-note','shadow-weekly-average','shadow-momentum'].forEach(id => elements[id] = document.getElementById(id));
+        ['stopwatch','task-input','start-btn','stop-btn','sleep-btn','add-favorite','active-task-indicator','active-task-name','active-task-start','favorites-grid','tasks-list','productive-time','sleep-time','total-time','streak-display','current-date','current-time','motivation-line','prod-range','prod-filter','prod-filter-total','sleep-range','productivity-chart','sleep-chart','streak-popup','streak-count','streak-message','close-streak','view-report','export-data','report-modal','report-content','close-modal','print-report','close-report','shadow-current-card','shadow-standard-card','shadow-current-minutes','shadow-percent','shadow-gap','shadow-status','shadow-progress-fill','shadow-average','shadow-rank','shadow-badge','shadow-wins','shadow-note','shadow-weekly-average','shadow-momentum','shadow-weekly-gap','shadow-target','shadow-pressure','shadow-my-wins','shadow-last-win','shadow-loss-streak'].forEach(id => elements[id] = document.getElementById(id));
         return elements;
       }
       loadFromStorage(key) { try { const d = localStorage.getItem(key); return d ? JSON.parse(d) : null; } catch { return null; } }
@@ -1115,7 +1125,8 @@
         const description = task.description || task.name || '';
         const startTime = Number(task.startTime || Date.now());
         const endTime = Number(task.endTime || startTime);
-        const duration = Math.max(0, task.duration ?? Math.round((endTime - startTime) / 60000));
+        const rawDuration = task.duration ?? Math.round((endTime - startTime) / 60000);
+        const duration = Math.min(24 * 60, Math.max(0, Number.isFinite(rawDuration) ? rawDuration : 0));
 
         const classifierInput = (task.description || task.name || '').trim();
         const classification = ActivityClassifier.classify(classifierInput);
@@ -1418,6 +1429,30 @@
         });
         return best;
       }
+
+      static buildSleepInsights(tasks) {
+        const today = new Date();
+        const daily = new Map();
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(today);
+          d.setDate(today.getDate() - i);
+          daily.set(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`, 0);
+        }
+        tasks.forEach(t => {
+          if (t.category !== 'Sleep') return;
+          if (daily.has(t.date)) daily.set(t.date, daily.get(t.date) + t.duration);
+        });
+        const values = [...daily.values()];
+        const avg = values.reduce((a,b)=>a+b,0) / Math.max(values.length,1);
+        const target = 480;
+        const debt = target - avg;
+        const variance = values.reduce((acc,v)=>acc + Math.pow(v - avg, 2), 0) / Math.max(values.length,1);
+        const std = Math.sqrt(variance);
+        let consistency = 'High';
+        if (std > 90) consistency = 'Low';
+        else if (std > 45) consistency = 'Moderate';
+        return { averageLast7: avg, sleepDebt: debt, consistency, values };
+      }
     }
     class UIManager {
       constructor(app) { this.app = app; this.currentMotivationIndex = 0; }
@@ -1453,6 +1488,7 @@
         const trainBreak = Object.entries(r.trainingBreakdown).map(([k,v]) => `<li>${k}: ${this.app.formatDuration(v)}</li>`).join('') || '<li>No entries</li>';
         const best = r.bestProductiveDay ? `${r.bestProductiveDay[0]} (${this.app.formatDuration(r.bestProductiveDay[1].productive)})` : 'N/A';
         const worst = r.worstWasteDay ? `${r.worstWasteDay[0]} (${this.app.formatDuration(r.worstWasteDay[1].waste)})` : 'N/A';
+        const sleepInsights = AnalyticsService.buildSleepInsights(this.app.state.tasks);
         this.app.elements['report-content'].innerHTML = `
           <h3 style="margin-bottom:1rem;">${monthName} ${r.year} Monthly Report</h3>
           <p><strong>Total sleep:</strong> ${this.app.formatDuration(r.sleepMinutes)} | <strong>Total productive:</strong> ${this.app.formatDuration(r.productiveMinutes)} | <strong>Total waste:</strong> ${this.app.formatDuration(r.wasteMinutes)}</p>
@@ -1461,6 +1497,7 @@
           <p><strong>Improvement vs previous month:</strong> Productive ${this.app.formatDuration(r.improvement.productiveDeltaMinutes)} | Waste ${this.app.formatDuration(r.improvement.wasteDeltaMinutes)}</p>
           <p><strong>Best productive day:</strong> ${best} | <strong>Worst waste day:</strong> ${worst}</p>
           <p><strong>Sleep consistency:</strong> longest >=7h streak is ${r.sleepConsistency.longestStreakDays} days</p>
+          <p><strong>Sleep (last 7 days):</strong> Avg ${this.app.formatDuration(sleepInsights.averageLast7)} | ${sleepInsights.sleepDebt > 0 ? `Debt ${this.app.formatDuration(sleepInsights.sleepDebt)}` : `Surplus ${this.app.formatDuration(Math.abs(sleepInsights.sleepDebt))}`} | Consistency ${sleepInsights.consistency}</p>
           <p><strong>Alerts:</strong> ${r.alerts.underProductivity ? `Under productivity (${r.alerts.underProductiveDays} days below ${this.app.formatDuration(r.alerts.thresholdMinutes)})` : 'None'}</p>
           <h4 style="margin-top:1rem;">Category Totals</h4><ul>${catLines}</ul>
           <h4>Productive Work Breakdown</h4><ul>${prodBreak}</ul>
@@ -1492,13 +1529,13 @@
         this.app = app;
         this.shadowSevenDayAverage = 0;
         this.rankTiers = [
-          { min: 0, title: 'Recruit', badge: 'Builder' },
-          { min: 120, title: 'Builder', badge: 'Operator' },
-          { min: 180, title: 'Operator', badge: 'Executor' },
-          { min: 240, title: 'Executor', badge: 'Vanguard' },
-          { min: 300, title: 'Vanguard', badge: 'Elite' },
-          { min: 360, title: 'Elite', badge: 'Apex' },
-          { min: 420, title: 'Apex', badge: 'Mythic' }
+          { min: 0, title: 'Initiate', badge: 'Baseline' },
+          { min: 120, title: 'Builder', badge: 'Builder' },
+          { min: 180, title: 'Operator', badge: 'Operator' },
+          { min: 240, title: 'Executor', badge: 'Executor' },
+          { min: 300, title: 'Elite', badge: 'Elite' },
+          { min: 360, title: 'Apex', badge: 'Apex' },
+          { min: 420, title: 'Overdrive', badge: 'Legend' }
         ];
       }
 
@@ -1535,48 +1572,49 @@
 
       computeRollingMetrics() {
         const series = this.buildDailyProductiveSeries();
-        if (!series.length) return { bestAvg: 0, currentAvg: 0, previousAvg: 0, todayMinutes: 0 };
+        if (!series.length) return { bestAvg: 0, currentAvg: 0, previousAvg: 0, todayMinutes: 0, hasMomentumBaseline: false };
 
         const prefix = new Array(series.length + 1).fill(0);
         for (let i = 0; i < series.length; i++) prefix[i + 1] = prefix[i] + series[i];
 
+        const lastIdx = series.length - 1;
+        const todayMinutes = series[lastIdx] || 0;
+
+        // Historical shadow excludes today (completed history only)
+        const historicalEnd = Math.max(0, lastIdx);
         let bestAvg = 0;
-        if (series.length < 7) {
-          bestAvg = prefix[series.length] / 7;
-        } else {
-          for (let i = 7; i <= series.length; i++) {
-            const avg = (prefix[i] - prefix[i - 7]) / 7;
-            if (avg > bestAvg) bestAvg = avg;
+        if (historicalEnd > 0) {
+          if (historicalEnd < 7) bestAvg = prefix[historicalEnd] / 7;
+          else {
+            for (let i = 7; i <= historicalEnd; i++) {
+              const avg = (prefix[i] - prefix[i - 7]) / 7;
+              if (avg > bestAvg) bestAvg = avg;
+            }
           }
         }
 
         const endIdx = series.length;
         const currentAvg = (prefix[endIdx] - prefix[Math.max(0, endIdx - 7)]) / 7;
-        const previousAvg = endIdx >= 14
-          ? (prefix[endIdx - 7] - prefix[endIdx - 14]) / 7
-          : 0;
 
-        return {
-          bestAvg,
-          currentAvg,
-          previousAvg,
-          todayMinutes: series[series.length - 1] || 0
-        };
+        const prevEnd = Math.max(0, endIdx - 7);
+        const prevStart = Math.max(0, prevEnd - 7);
+        const previousAvg = prevEnd > 0 ? (prefix[prevEnd] - prefix[prevStart]) / 7 : 0;
+        const hasMomentumBaseline = (prevEnd - prevStart) >= 4;
+
+        return { bestAvg, currentAvg, previousAvg, todayMinutes, hasMomentumBaseline };
       }
 
       getShadowRank(minutes) {
         let selected = this.rankTiers[0];
-        for (const tier of this.rankTiers) {
-          if (minutes >= tier.min) selected = tier;
-        }
+        for (const tier of this.rankTiers) if (minutes >= tier.min) selected = tier;
         return selected;
       }
 
       getCurrentStatus(percentage) {
-        if (percentage >= 100) return 'Dominating the Shadow';
-        if (percentage >= 90) return 'Near the Shadow';
-        if (percentage >= 70) return 'Drifting from Standard';
-        return 'Below Identity';
+        if (percentage >= 100) return 'STANDARD BROKEN';
+        if (percentage >= 90) return 'AT THE GATE';
+        if (percentage >= 70) return 'TRAILING';
+        return 'OUT OF RANGE';
       }
 
       getProgressStyle(percentage) {
@@ -1586,37 +1624,120 @@
         return { color: '#dc3545', shadow: 'none' };
       }
 
-      getMomentum(currentAvg, previousAvg) {
+      getMomentum(currentAvg, previousAvg, hasBaseline) {
+        if (!hasBaseline) return { label: 'Insufficient history', cls: 'shadow-momentum-flat' };
         const delta = currentAvg - previousAvg;
         if (delta > 8) return { label: `Rising (+${this.app.formatDuration(delta)})`, cls: 'shadow-momentum-positive' };
         if (delta < -8) return { label: `Drifting (-${this.app.formatDuration(Math.abs(delta))})`, cls: 'shadow-momentum-negative' };
         return { label: 'Stable', cls: 'shadow-momentum-flat' };
       }
 
-      render({ todayMinutes, shadowAvg, currentAvg, previousAvg, isNewStandard }) {
+      getPressure(percentage, weeklyGap) {
+        if (percentage >= 100 && weeklyGap <= 0) return { label: 'Pressure: Controlled', cls: 'shadow-pressure-low' };
+        if (percentage >= 90) return { label: 'Pressure: Elevated', cls: 'shadow-pressure-mid' };
+        if (percentage >= 70) return { label: 'Pressure: High', cls: 'shadow-pressure-mid' };
+        return { label: 'Pressure: Critical', cls: 'shadow-pressure-high' };
+      }
+
+      countShadowWinsThisMonth(dailyMap, shadowAvg) {
+        if (shadowAvg <= 0) return { myWins: 0, shadowWins: 0, activeDays: 0 };
+        const now = new Date();
+        const month = now.getMonth();
+        const year = now.getFullYear();
+        let myWins = 0;
+        let activeDays = 0;
+
+        for (const [date, minutes] of dailyMap.entries()) {
+          const d = new Date(date);
+          if (d.getFullYear() !== year || d.getMonth() !== month) continue;
+          activeDays += 1;
+          if (minutes >= shadowAvg) myWins++;
+        }
+
+        const shadowWins = Math.max(0, activeDays - myWins);
+        return { myWins, shadowWins, activeDays };
+      }
+
+      getSortedRecentMonthDays(dailyMap) {
+        const now = new Date();
+        const month = now.getMonth();
+        const year = now.getFullYear();
+        return [...dailyMap.entries()]
+          .filter(([date]) => {
+            const d = new Date(date);
+            return d.getFullYear() === year && d.getMonth() === month;
+          })
+          .sort((a, b) => a[0].localeCompare(b[0]));
+      }
+
+      getDaysSinceLastShadowWin(dailyMap, shadowAvg) {
+        if (shadowAvg <= 0) return 0;
+        const days = this.getSortedRecentMonthDays(dailyMap);
+        if (!days.length) return 0;
+        let distance = 0;
+        for (let i = days.length - 1; i >= 0; i--) {
+          const minutes = days[i][1];
+          if (minutes >= shadowAvg) return distance;
+          distance += 1;
+        }
+        return distance;
+      }
+
+      getShadowLeadStreak(dailyMap, shadowAvg) {
+        if (shadowAvg <= 0) return 0;
+        const days = this.getSortedRecentMonthDays(dailyMap);
+        if (!days.length) return 0;
+        let streak = 0;
+        for (let i = days.length - 1; i >= 0; i--) {
+          const minutes = days[i][1];
+          if (minutes < shadowAvg) streak += 1;
+          else break;
+        }
+        return streak;
+      }
+
+      render({ todayMinutes, shadowAvg, currentAvg, previousAvg, hasMomentumBaseline, isNewStandard }) {
         const safeShadow = shadowAvg > 0 ? shadowAvg : 1;
         const gap = shadowAvg - todayMinutes;
+        const weeklyGap = shadowAvg - currentAvg;
         const percentage = (todayMinutes / safeShadow) * 100;
+
+        const dailyMap = this.getDailyProductiveMap();
+        const competition = this.countShadowWinsThisMonth(dailyMap, shadowAvg);
+        const daysSinceLastWin = this.getDaysSinceLastShadowWin(dailyMap, shadowAvg);
+        const shadowLeadStreak = this.getShadowLeadStreak(dailyMap, shadowAvg);
+        const targetToday = shadowAvg > 0 ? Math.ceil(shadowAvg + 1) : 0;
 
         this.app.elements['shadow-current-minutes'].textContent = this.app.formatDuration(todayMinutes);
         this.app.elements['shadow-average'].textContent = this.app.formatDuration(shadowAvg);
         this.app.elements['shadow-weekly-average'].textContent = this.app.formatDuration(currentAvg);
+        this.app.elements['shadow-target'].textContent = this.app.formatDuration(targetToday);
+        this.app.elements['shadow-weekly-gap'].textContent = `${weeklyGap >= 0 ? '-' : '+'}${this.app.formatDuration(Math.abs(weeklyGap))}`;
+        this.app.elements['shadow-weekly-gap'].className = weeklyGap > 0 ? 'shadow-gap-positive' : (weeklyGap < 0 ? 'shadow-gap-negative' : 'shadow-gap-equal');
 
-        const momentum = this.getMomentum(currentAvg, previousAvg);
+        const momentum = this.getMomentum(currentAvg, previousAvg, hasMomentumBaseline);
         const momentumEl = this.app.elements['shadow-momentum'];
         momentumEl.textContent = momentum.label;
         momentumEl.className = momentum.cls;
 
         this.app.elements['shadow-percent'].textContent = `${percentage.toFixed(1)}%`;
         const gapEl = this.app.elements['shadow-gap'];
-        const absGap = Math.abs(gap);
-        gapEl.textContent = `${gap >= 0 ? '-' : '+'}${this.app.formatDuration(absGap)}`;
+        gapEl.textContent = `${gap >= 0 ? '-' : '+'}${this.app.formatDuration(Math.abs(gap))}`;
         gapEl.className = gap > 0 ? 'shadow-gap-positive' : (gap < 0 ? 'shadow-gap-negative' : 'shadow-gap-equal');
 
         this.app.elements['shadow-status'].textContent = this.getCurrentStatus(percentage);
+        const pressure = this.getPressure(percentage, weeklyGap);
+        const pressureEl = this.app.elements['shadow-pressure'];
+        pressureEl.textContent = pressure.label;
+        pressureEl.className = `shadow-badge ${pressure.cls}`;
+
         const rank = this.getShadowRank(shadowAvg);
         this.app.elements['shadow-rank'].textContent = `Rank: ${rank.title}`;
         this.app.elements['shadow-badge'].textContent = rank.badge;
+        this.app.elements['shadow-my-wins'].textContent = `My Wins (Month): ${competition.myWins}`;
+        this.app.elements['shadow-wins'].textContent = `Shadow Wins (Month): ${competition.shadowWins}`;
+        this.app.elements['shadow-last-win'].textContent = `Since Last Win: ${daysSinceLastWin}d`;
+        this.app.elements['shadow-loss-streak'].textContent = `Shadow Lead Streak: ${shadowLeadStreak}d`;
         this.app.elements['shadow-note'].textContent = 'Calculated from real historical data only';
 
         const fill = this.app.elements['shadow-progress-fill'];
@@ -1650,6 +1771,7 @@
           shadowAvg: resolvedShadow,
           currentAvg: metrics.currentAvg,
           previousAvg: metrics.previousAvg,
+          hasMomentumBaseline: metrics.hasMomentumBaseline,
           isNewStandard: allowAnimation && isNewStandard
         });
       }
