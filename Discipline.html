@@ -356,6 +356,95 @@
     .stat-sleep { color: var(--purple); }
     .stat-total { color: var(--primary); }
     .stat-streak { color: var(--warning); }
+
+    /* Shadow Engine */
+    .shadow-section {
+      margin-bottom: 2rem;
+    }
+    .shadow-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      margin-bottom: 1rem;
+      color: var(--text-accent);
+    }
+    .shadow-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+    .shadow-card {
+      background: linear-gradient(145deg, rgba(18, 18, 18, 0.95), rgba(24, 24, 24, 0.95));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.25rem;
+      box-shadow: var(--shadow);
+      transition: transform 320ms ease, box-shadow 320ms ease, border-color 320ms ease;
+    }
+    .shadow-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-hover);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+    .shadow-card-title {
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-secondary);
+      margin-bottom: 0.85rem;
+    }
+    .shadow-main-value {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+      color: var(--text-accent);
+    }
+    .shadow-line {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.45rem;
+    }
+    .shadow-gap-positive { color: var(--danger); }
+    .shadow-gap-negative { color: var(--success); }
+    .shadow-gap-equal { color: var(--text-secondary); }
+    .shadow-momentum-positive { color: var(--success); }
+    .shadow-momentum-negative { color: var(--danger); }
+    .shadow-momentum-flat { color: var(--warning); }
+    .shadow-badge {
+      display: inline-flex;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.05);
+      font-size: 0.8rem;
+      color: var(--text-primary);
+      margin-top: 0.25rem;
+      margin-right: 0.5rem;
+    }
+    .shadow-progress {
+      margin-top: 0.75rem;
+      height: 8px;
+      width: 100%;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .shadow-progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      transition: width 420ms ease, background 420ms ease, box-shadow 420ms ease;
+      background: #dc3545;
+    }
+    .shadow-new-standard {
+      animation: shadowPulse 520ms ease;
+    }
+    @keyframes shadowPulse {
+      0% { box-shadow: var(--shadow); border-color: var(--border); }
+      50% { box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.25), var(--shadow-hover); border-color: rgba(40, 167, 69, 0.7); }
+      100% { box-shadow: var(--shadow); border-color: var(--border); }
+    }
     /* Graphs Container */
     .graphs-container {
       display: flex;
@@ -363,11 +452,19 @@
       gap: 2rem;
     }
     .graph-card {
-      background: linear-gradient(135deg, rgba(25, 25, 25, 0.95), rgba(30, 30, 30, 0.95));
+      background: linear-gradient(160deg, rgba(22, 24, 30, 0.95), rgba(17, 18, 22, 0.96));
       border-radius: 20px;
       padding: 1.5rem;
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+      animation: graphFadeIn 400ms ease, graphSlideUp 500ms ease;
+      transition: transform 350ms ease, box-shadow 350ms ease, border-color 350ms ease;
+      will-change: transform, box-shadow;
+    }
+    .graph-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
+      border-color: rgba(0, 123, 255, 0.25);
     }
     .graph-header {
       display: flex;
@@ -375,7 +472,9 @@
       align-items: center;
       margin-bottom: 1.5rem;
       padding-bottom: 1rem;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      gap: 10px;
+      flex-wrap: wrap;
     }
     .graph-title {
       font-size: 1.2rem;
@@ -388,20 +487,53 @@
     .graph-controls {
       display: flex;
       gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
     }
     .range-select {
-      background: rgba(15, 15, 15, 0.8);
+      background: rgba(12, 12, 15, 0.9);
       color: var(--text-primary);
-      border: 1px solid var(--border);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       padding: 8px 12px;
-      border-radius: 8px;
+      border-radius: 10px;
       font-size: 0.9rem;
       cursor: pointer;
+      transition: border-color 300ms ease, box-shadow 300ms ease, transform 300ms ease;
+    }
+    .range-select:hover {
+      border-color: rgba(0, 123, 255, 0.35);
+      transform: translateY(-1px);
+    }
+    .range-select:focus {
+      outline: none;
+      border-color: rgba(0, 123, 255, 0.65);
+      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.12);
     }
     .graph-canvas-container {
       position: relative;
       height: 250px;
       width: 100%;
+      transition: opacity 350ms ease, transform 350ms ease;
+    }
+    .graph-canvas-container.filter-updating {
+      opacity: 0.55;
+      transform: translateY(4px);
+    }
+    .prod-total-counter {
+      min-width: 100px;
+      text-align: right;
+      font-weight: 600;
+      color: #98f5a7;
+      font-family: 'Courier New', monospace;
+      letter-spacing: 0.3px;
+    }
+    @keyframes graphFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes graphSlideUp {
+      from { transform: translateY(10px); }
+      to { transform: translateY(0); }
     }
     /* Streak Popup */
     .streak-popup-overlay {
@@ -515,6 +647,9 @@
       .stats-dashboard {
         grid-template-columns: 1fr;
       }
+      .shadow-grid {
+        grid-template-columns: 1fr;
+      }
       .favorites-grid {
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
       }
@@ -602,6 +737,39 @@
         <div class="stat-label">Day Streak</div>
       </div>
     </div>
+
+    <!-- SHADOW Engine -->
+    <section class="shadow-section">
+      <h2 class="shadow-title">SHADOW</h2>
+      <div class="shadow-grid">
+        <div class="shadow-card" id="shadow-current-card">
+          <div class="shadow-card-title">⚔ Current You</div>
+          <div class="shadow-main-value" id="shadow-current-minutes">0h 00m</div>
+          <div class="shadow-line">Weekly 7-Day Avg: <strong id="shadow-weekly-average">0h 00m</strong></div>
+          <div class="shadow-line">Momentum: <strong id="shadow-momentum" class="shadow-momentum-flat">Stable</strong></div>
+          <div class="shadow-line">Gap vs Shadow: <strong id="shadow-gap" class="shadow-gap-equal">0h 00m</strong></div>
+          <div class="shadow-line">Reached: <strong id="shadow-percent">0%</strong></div>
+          <div>
+            <span class="shadow-badge" id="shadow-status">Below Identity</span>
+          </div>
+          <div class="shadow-progress">
+            <div class="shadow-progress-fill" id="shadow-progress-fill"></div>
+          </div>
+        </div>
+        <div class="shadow-card" id="shadow-standard-card">
+          <div class="shadow-card-title">🌑 The Shadow</div>
+          <div class="shadow-main-value" id="shadow-average">0h 00m</div>
+          <div>
+            <span class="shadow-badge" id="shadow-rank">Rank: Recruit</span>
+          </div>
+          <div>
+            <span class="shadow-badge" id="shadow-badge">Builder</span>
+          </div>
+          <div class="shadow-line">Your Strongest Historical 7-Day Standard</div>
+          <div class="shadow-line" id="shadow-note">Calculated from real historical data only</div>
+        </div>
+      </div>
+    </section>
     <!-- Main Content -->
     <div class="main-content">
       <!-- Stopwatch Section -->
@@ -671,6 +839,14 @@
                 <option value="6m">6 Months</option>
                 <option value="1y">1 Year</option>
               </select>
+              <select class="range-select" id="prod-filter">
+                <option value="all">All</option>
+                <option value="productivity">Productivity</option>
+                <option value="distraction">Distraction</option>
+                <option value="neutral">Neutral</option>
+                <option value="high_waste">High Waste Only</option>
+              </select>
+              <span class="prod-total-counter" id="prod-filter-total">0h 00m</span>
             </div>
           </div>
           <div class="graph-canvas-container">
@@ -739,7 +915,8 @@
         SCHEMA_VERSION: 'discipline_tracker_schema_version',
         SYNC_ENDPOINT: 'discipline_tracker_sync_endpoint',
         SYNC_DEVICE_ID: 'discipline_tracker_device_id',
-        SYNC_QUEUE: 'discipline_tracker_sync_queue'
+        SYNC_QUEUE: 'discipline_tracker_sync_queue',
+        SHADOW_AVG: 'discipline_tracker_shadow_avg'
       },
       MOTIVATION_INTERVAL: 15000,
       CHART_RANGES: { '7d': 7, '30d': 30, '3m': 90, '6m': 180, '1y': 365 }
@@ -803,6 +980,58 @@
       60: "Two months. You've transformed.", 90: "Three months. Unstoppable.",
       100: "Century streak. This is your identity.", 365: "One year. You've mastered yourself."
     };
+
+    class ActivityClassifier {
+      static classify(activityInput) {
+        const activity = (activityInput || '').trim();
+        const text = activity.toLowerCase();
+
+        const strongDistraction = ['random', 'scrolling', 'reels', 'timepass', 'doomscroll', 'binge', 'procrastination'];
+        const distractionKeywords = ['instagram', 'tiktok', 'youtube shorts', 'gaming', 'games', 'twitter', 'x app', 'reddit', 'netflix', 'series', 'memes', 'chatting'];
+        const productiveKeywords = ['coding', 'project', 'study', 'learning', 'course', 'workout', 'exercise', 'gym', 'chest', 'back', 'legs', 'pcb', 'analog', 'control systems', 'research', 'writing', 'build'];
+        const neutralKeywords = ['commute', 'cleaning', 'meal', 'eating', 'shopping', 'family', 'chores', 'admin', 'errands', 'restroom'];
+
+        let productiveScore = 0;
+        let distractionScore = 0;
+        let neutralScore = 0;
+
+        strongDistraction.forEach(k => { if (text.includes(k)) distractionScore += 5; });
+        distractionKeywords.forEach(k => { if (text.includes(k)) distractionScore += 3; });
+        productiveKeywords.forEach(k => { if (text.includes(k)) productiveScore += 3; });
+        neutralKeywords.forEach(k => { if (text.includes(k)) neutralScore += 2; });
+
+        if (!text) neutralScore += 1;
+
+        let category = 'NEUTRAL';
+        let graph_tag = 'neutral';
+        if (distractionScore > productiveScore && distractionScore >= neutralScore) {
+          category = 'DISTRACTION';
+          graph_tag = 'distraction';
+        } else if (productiveScore > distractionScore && productiveScore >= neutralScore) {
+          category = 'PRODUCTIVE';
+          graph_tag = 'productivity';
+        }
+
+        const maxScore = Math.max(productiveScore, distractionScore, neutralScore, 1);
+        const secondScore = [productiveScore, distractionScore, neutralScore].sort((a, b) => b - a)[1] || 0;
+        const confidence = Math.max(40, Math.min(100, Math.round(55 + (maxScore - secondScore) * 9)));
+
+        let waste_level = 'NONE';
+        if (category === 'DISTRACTION') {
+          if (strongDistraction.some(k => text.includes(k)) || distractionScore >= 8) waste_level = 'HIGH';
+          else if (distractionScore >= 5) waste_level = 'MODERATE';
+          else waste_level = 'LOW';
+        }
+
+        return {
+          activity,
+          category,
+          confidence,
+          waste_level,
+          graph_tag
+        };
+      }
+    }
     class SyncManager {
       constructor(app) { this.app = app; }
       get endpoint() { return localStorage.getItem(CONFIG.STORAGE_KEYS.SYNC_ENDPOINT); }
@@ -858,13 +1087,14 @@
         this.stopwatch = new StopwatchManager(this);
         this.taskManager = new TaskManager(this);
         this.uiManager = new UIManager(this);
+        this.shadowEngine = new ShadowEngine(this);
         this.graphManager = new GraphManager(this);
         this.eventManager = new EventManager(this);
         this.migrateSchema();
       }
       initializeElements() {
         const elements = {};
-        ['stopwatch','task-input','start-btn','stop-btn','sleep-btn','add-favorite','active-task-indicator','active-task-name','active-task-start','favorites-grid','tasks-list','productive-time','sleep-time','total-time','streak-display','current-date','current-time','motivation-line','prod-range','sleep-range','productivity-chart','sleep-chart','streak-popup','streak-count','streak-message','close-streak','view-report','export-data','report-modal','report-content','close-modal','print-report','close-report'].forEach(id => elements[id] = document.getElementById(id));
+        ['stopwatch','task-input','start-btn','stop-btn','sleep-btn','add-favorite','active-task-indicator','active-task-name','active-task-start','favorites-grid','tasks-list','productive-time','sleep-time','total-time','streak-display','current-date','current-time','motivation-line','prod-range','prod-filter','prod-filter-total','sleep-range','productivity-chart','sleep-chart','streak-popup','streak-count','streak-message','close-streak','view-report','export-data','report-modal','report-content','close-modal','print-report','close-report','shadow-current-card','shadow-standard-card','shadow-current-minutes','shadow-percent','shadow-gap','shadow-status','shadow-progress-fill','shadow-average','shadow-rank','shadow-badge','shadow-note','shadow-weekly-average','shadow-momentum'].forEach(id => elements[id] = document.getElementById(id));
         return elements;
       }
       loadFromStorage(key) { try { const d = localStorage.getItem(key); return d ? JSON.parse(d) : null; } catch { return null; } }
@@ -886,6 +1116,34 @@
         const startTime = Number(task.startTime || Date.now());
         const endTime = Number(task.endTime || startTime);
         const duration = Math.max(0, task.duration ?? Math.round((endTime - startTime) / 60000));
+
+        const classifierInput = (task.description || task.name || '').trim();
+        const classification = ActivityClassifier.classify(classifierInput);
+
+        // Context-aware correction so graph filters remain reliable:
+        // category intent from user selection is respected over weak text hints.
+        if (category === 'Time Waste / Distraction') {
+          classification.category = 'DISTRACTION';
+          classification.graph_tag = 'distraction';
+          if (classification.waste_level === 'NONE') classification.waste_level = duration >= 90 ? 'HIGH' : (duration >= 30 ? 'MODERATE' : 'LOW');
+          classification.confidence = Math.max(75, classification.confidence);
+        } else if (PRODUCTIVE_CATEGORIES.has(category)) {
+          classification.category = 'PRODUCTIVE';
+          classification.graph_tag = 'productivity';
+          classification.waste_level = 'NONE';
+          classification.confidence = Math.max(70, classification.confidence);
+        } else if (category === 'Sleep' || category === 'Miscellaneous') {
+          classification.category = 'NEUTRAL';
+          classification.graph_tag = 'neutral';
+          classification.waste_level = 'NONE';
+          classification.confidence = Math.max(60, classification.confidence);
+        }
+
+        const graphTag = task.graph_tag || classification.graph_tag;
+        const wasteLevel = task.waste_level || classification.waste_level;
+        const growthCategory = task.growth_category || classification.category;
+        const confidence = Number(task.confidence ?? classification.confidence);
+
         return {
           id: task.id || `${startTime}-${Math.random().toString(36).slice(2, 8)}`,
           category, subcategory, description,
@@ -905,7 +1163,6 @@
             waste_level: wasteLevel,
             graph_tag: graphTag
           }
-          updatedAt: Date.now()
         };
       }
       getDateString(date = new Date()) { const d = new Date(date); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
@@ -924,7 +1181,7 @@
       }
       async initialize() {
         if (!window.Chart) { try { await this.loadChartJS(); } catch {} }
-        this.uiManager.initialize(); this.taskManager.initialize(); this.graphManager.initialize(); this.eventManager.initialize();
+        this.uiManager.initialize(); this.taskManager.initialize(); this.shadowEngine.initialize(); this.graphManager.initialize(); this.eventManager.initialize();
         this.updateStreak();
         if (this.state.activeTask) this.stopwatch.resumeActiveTask(this.state.activeTask);
         window.addEventListener('online', () => this.syncManager.syncNow());
@@ -1041,6 +1298,8 @@
         this.app.elements['productive-time'].textContent = this.app.formatDuration(productiveTime);
         this.app.elements['sleep-time'].textContent = this.app.formatDuration(sleepTime);
         this.app.elements['total-time'].textContent = this.app.formatDuration(totalTime);
+
+        if (this.app.shadowEngine) this.app.shadowEngine.refresh();
       }
       renderTasks() {
         const today = this.app.getDateString();
@@ -1202,7 +1461,6 @@
           <p><strong>Improvement vs previous month:</strong> Productive ${this.app.formatDuration(r.improvement.productiveDeltaMinutes)} | Waste ${this.app.formatDuration(r.improvement.wasteDeltaMinutes)}</p>
           <p><strong>Best productive day:</strong> ${best} | <strong>Worst waste day:</strong> ${worst}</p>
           <p><strong>Sleep consistency:</strong> longest >=7h streak is ${r.sleepConsistency.longestStreakDays} days</p>
-          <p><strong>Sleep (last 7 days):</strong> Avg ${this.app.formatDuration(sleepInsights.averageLast7)} | ${sleepInsights.sleepDebt > 0 ? `Debt ${this.app.formatDuration(sleepInsights.sleepDebt)}` : `Surplus ${this.app.formatDuration(Math.abs(sleepInsights.sleepDebt))}`} | Consistency ${sleepInsights.consistency}</p>
           <p><strong>Alerts:</strong> ${r.alerts.underProductivity ? `Under productivity (${r.alerts.underProductiveDays} days below ${this.app.formatDuration(r.alerts.thresholdMinutes)})` : 'None'}</p>
           <h4 style="margin-top:1rem;">Category Totals</h4><ul>${catLines}</ul>
           <h4>Productive Work Breakdown</h4><ul>${prodBreak}</ul>
@@ -1228,27 +1486,332 @@
         });
       }
     }
+
+    class ShadowEngine {
+      constructor(app) {
+        this.app = app;
+        this.shadowSevenDayAverage = 0;
+        this.rankTiers = [
+          { min: 0, title: 'Recruit', badge: 'Builder' },
+          { min: 120, title: 'Builder', badge: 'Operator' },
+          { min: 180, title: 'Operator', badge: 'Executor' },
+          { min: 240, title: 'Executor', badge: 'Vanguard' },
+          { min: 300, title: 'Vanguard', badge: 'Elite' },
+          { min: 360, title: 'Elite', badge: 'Apex' },
+          { min: 420, title: 'Apex', badge: 'Mythic' }
+        ];
+      }
+
+      initialize() {
+        const stored = parseFloat(this.app.loadFromStorage(CONFIG.STORAGE_KEYS.SHADOW_AVG));
+        this.shadowSevenDayAverage = Number.isFinite(stored) ? stored : 0;
+        this.refresh(false);
+      }
+
+      getDailyProductiveMap() {
+        const dailyMap = new Map();
+        this.app.state.tasks.forEach(task => {
+          if (!this.app.isProductiveCategory(task.category)) return;
+          dailyMap.set(task.date, (dailyMap.get(task.date) || 0) + task.duration);
+        });
+        return dailyMap;
+      }
+
+      buildDailyProductiveSeries() {
+        const dailyMap = this.getDailyProductiveMap();
+        if (dailyMap.size === 0) return [];
+
+        const sorted = [...dailyMap.keys()].sort();
+        const start = new Date(sorted[0]);
+        const end = new Date(this.app.getDateString());
+        const series = [];
+
+        for (let cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
+          const key = this.app.getDateString(cursor);
+          series.push(dailyMap.get(key) || 0);
+        }
+        return series;
+      }
+
+      computeRollingMetrics() {
+        const series = this.buildDailyProductiveSeries();
+        if (!series.length) return { bestAvg: 0, currentAvg: 0, previousAvg: 0, todayMinutes: 0 };
+
+        const prefix = new Array(series.length + 1).fill(0);
+        for (let i = 0; i < series.length; i++) prefix[i + 1] = prefix[i] + series[i];
+
+        let bestAvg = 0;
+        if (series.length < 7) {
+          bestAvg = prefix[series.length] / 7;
+        } else {
+          for (let i = 7; i <= series.length; i++) {
+            const avg = (prefix[i] - prefix[i - 7]) / 7;
+            if (avg > bestAvg) bestAvg = avg;
+          }
+        }
+
+        const endIdx = series.length;
+        const currentAvg = (prefix[endIdx] - prefix[Math.max(0, endIdx - 7)]) / 7;
+        const previousAvg = endIdx >= 14
+          ? (prefix[endIdx - 7] - prefix[endIdx - 14]) / 7
+          : 0;
+
+        return {
+          bestAvg,
+          currentAvg,
+          previousAvg,
+          todayMinutes: series[series.length - 1] || 0
+        };
+      }
+
+      getShadowRank(minutes) {
+        let selected = this.rankTiers[0];
+        for (const tier of this.rankTiers) {
+          if (minutes >= tier.min) selected = tier;
+        }
+        return selected;
+      }
+
+      getCurrentStatus(percentage) {
+        if (percentage >= 100) return 'Dominating the Shadow';
+        if (percentage >= 90) return 'Near the Shadow';
+        if (percentage >= 70) return 'Drifting from Standard';
+        return 'Below Identity';
+      }
+
+      getProgressStyle(percentage) {
+        if (percentage >= 100) return { color: '#28a745', shadow: '0 0 12px rgba(40,167,69,0.45)' };
+        if (percentage >= 90) return { color: '#007bff', shadow: 'none' };
+        if (percentage >= 70) return { color: '#ffc107', shadow: 'none' };
+        return { color: '#dc3545', shadow: 'none' };
+      }
+
+      getMomentum(currentAvg, previousAvg) {
+        const delta = currentAvg - previousAvg;
+        if (delta > 8) return { label: `Rising (+${this.app.formatDuration(delta)})`, cls: 'shadow-momentum-positive' };
+        if (delta < -8) return { label: `Drifting (-${this.app.formatDuration(Math.abs(delta))})`, cls: 'shadow-momentum-negative' };
+        return { label: 'Stable', cls: 'shadow-momentum-flat' };
+      }
+
+      render({ todayMinutes, shadowAvg, currentAvg, previousAvg, isNewStandard }) {
+        const safeShadow = shadowAvg > 0 ? shadowAvg : 1;
+        const gap = shadowAvg - todayMinutes;
+        const percentage = (todayMinutes / safeShadow) * 100;
+
+        this.app.elements['shadow-current-minutes'].textContent = this.app.formatDuration(todayMinutes);
+        this.app.elements['shadow-average'].textContent = this.app.formatDuration(shadowAvg);
+        this.app.elements['shadow-weekly-average'].textContent = this.app.formatDuration(currentAvg);
+
+        const momentum = this.getMomentum(currentAvg, previousAvg);
+        const momentumEl = this.app.elements['shadow-momentum'];
+        momentumEl.textContent = momentum.label;
+        momentumEl.className = momentum.cls;
+
+        this.app.elements['shadow-percent'].textContent = `${percentage.toFixed(1)}%`;
+        const gapEl = this.app.elements['shadow-gap'];
+        const absGap = Math.abs(gap);
+        gapEl.textContent = `${gap >= 0 ? '-' : '+'}${this.app.formatDuration(absGap)}`;
+        gapEl.className = gap > 0 ? 'shadow-gap-positive' : (gap < 0 ? 'shadow-gap-negative' : 'shadow-gap-equal');
+
+        this.app.elements['shadow-status'].textContent = this.getCurrentStatus(percentage);
+        const rank = this.getShadowRank(shadowAvg);
+        this.app.elements['shadow-rank'].textContent = `Rank: ${rank.title}`;
+        this.app.elements['shadow-badge'].textContent = rank.badge;
+        this.app.elements['shadow-note'].textContent = 'Calculated from real historical data only';
+
+        const fill = this.app.elements['shadow-progress-fill'];
+        const cappedWidth = Math.min(130, Math.max(0, percentage));
+        const style = this.getProgressStyle(percentage);
+        fill.style.width = `${cappedWidth}%`;
+        fill.style.background = style.color;
+        fill.style.boxShadow = style.shadow;
+
+        if (isNewStandard) {
+          const card = this.app.elements['shadow-standard-card'];
+          card.classList.remove('shadow-new-standard');
+          void card.offsetWidth;
+          card.classList.add('shadow-new-standard');
+        }
+      }
+
+      refresh(allowAnimation = true) {
+        const metrics = this.computeRollingMetrics();
+        const historicalBest = metrics.bestAvg;
+        const resolvedShadow = Math.max(this.shadowSevenDayAverage, historicalBest);
+        const isNewStandard = resolvedShadow > this.shadowSevenDayAverage;
+
+        if (resolvedShadow !== this.shadowSevenDayAverage) {
+          this.shadowSevenDayAverage = resolvedShadow;
+          this.app.saveToStorage(CONFIG.STORAGE_KEYS.SHADOW_AVG, resolvedShadow);
+        }
+
+        this.render({
+          todayMinutes: metrics.todayMinutes,
+          shadowAvg: resolvedShadow,
+          currentAvg: metrics.currentAvg,
+          previousAvg: metrics.previousAvg,
+          isNewStandard: allowAnimation && isNewStandard
+        });
+      }
+    }
+
     class GraphManager {
-      constructor(app) { this.app = app; this.charts = { productivity: null, sleep: null }; }
-      initialize() { if (!window.Chart) return; this.createCharts(); this.setupChartControls(); }
+      constructor(app) { this.app = app; this.charts = { productivity: null, sleep: null }; this.totalCounterAnimation = null; this.lastFilteredTotalMinutes = 0; }
+      initialize() { if (!window.Chart) return; this.createCharts(); this.setupChartControls(); this.lastFilteredTotalMinutes = this.getCurrentFilteredTotalMinutes(); this.animateFilteredTotal(0, this.lastFilteredTotalMinutes); }
+
+      getCurrentFilter() {
+        return this.app.elements['prod-filter']?.value || 'all';
+      }
+
+      passesProductivityFilter(task, filter) {
+        if (task.category === 'Sleep') return false;
+        const tag = task.graph_tag || 'neutral';
+        const waste = task.waste_level || 'NONE';
+        if (filter === 'all') return true;
+        if (filter === 'productivity') return tag === 'productivity';
+        if (filter === 'distraction') return tag === 'distraction';
+        if (filter === 'neutral') return tag === 'neutral';
+        if (filter === 'high_waste') return waste === 'HIGH';
+        return true;
+      }
+
+      getColorScheme(filter) {
+        if (filter === 'productivity') return { border: 'rgb(40, 180, 99)', fill: 'rgba(40, 180, 99, 0.16)' };
+        if (filter === 'distraction' || filter === 'high_waste') return { border: 'rgb(220, 53, 69)', fill: 'rgba(220, 53, 69, 0.16)' };
+        if (filter === 'neutral') return { border: 'rgb(148, 163, 184)', fill: 'rgba(148, 163, 184, 0.14)' };
+        return { border: 'rgb(0,123,255)', fill: 'rgba(0,123,255,0.12)' };
+      }
+
       createCharts() {
         const prodCtx = this.app.elements['productivity-chart'].getContext('2d');
-        this.charts.productivity = new Chart(prodCtx, { type: 'line', data: this.getProductivityData('7d'), options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => v + 'h' } } }, elements: { point: { radius: 0 }, line: { tension: 0.3 } } } });
+        this.charts.productivity = new Chart(prodCtx, {
+          type: 'line',
+          data: this.getProductivityData('7d', this.getCurrentFilter()),
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 420, easing: 'easeOutCubic' },
+            transitions: {
+              active: { animation: { duration: 320 } },
+              resize: { animation: { duration: 320 } }
+            },
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { callback: v => v + 'h' } } },
+            elements: {
+              point: {
+                radius: 0,
+                hoverRadius: 0,
+                pointStyle: 'circle',
+                hoverBorderWidth: 2
+              },
+              line: { tension: 0.34, borderWidth: 2.5 }
+            }
+          }
+        });
+
         const sleepCtx = this.app.elements['sleep-chart'].getContext('2d');
-        this.charts.sleep = new Chart(sleepCtx, { type: 'bar', data: this.getSleepData('7d'), options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 12, ticks: { callback: v => v + 'h' } } } } });
+        this.charts.sleep = new Chart(sleepCtx, {
+          type: 'bar',
+          data: this.getSleepData('7d'),
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 380, easing: 'easeOutQuad' },
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, max: 12, ticks: { callback: v => v + 'h' } } }
+          }
+        });
       }
-      getProductivityData(range='7d') {
+
+      getProductivityData(range='7d', filter='all') {
         const days = CONFIG.CHART_RANGES[range] || 7, data=[], labels=[], today=new Date();
-        for (let i=days-1;i>=0;i--) { const d=new Date(today); d.setDate(today.getDate()-i); const ds=this.app.getDateString(d); const mins=this.app.state.tasks.filter(t => t.date===ds && this.app.isProductiveCategory(t.category)).reduce((a,t)=>a+t.duration,0); labels.push(d.toLocaleDateString('en-US',{month:'short',day:'numeric'})); data.push(parseFloat((mins/60).toFixed(1))); }
-        return { labels, datasets: [{ label:'Productive Hours', data, borderColor:'rgb(0,123,255)', backgroundColor:'rgba(0,123,255,0.1)', fill:true }] };
+        for (let i=days-1;i>=0;i--) {
+          const d=new Date(today);
+          d.setDate(today.getDate()-i);
+          const ds=this.app.getDateString(d);
+          const mins=this.app.state.tasks
+            .filter(t => t.date===ds && this.passesProductivityFilter(t, filter))
+            .reduce((a,t)=>a+t.duration,0);
+          labels.push(d.toLocaleDateString('en-US',{month:'short',day:'numeric'}));
+          data.push(parseFloat((mins/60).toFixed(2)));
+        }
+        const colors = this.getColorScheme(filter);
+        return {
+          labels,
+          datasets: [{
+            label:'Tracked Hours',
+            data,
+            borderColor: colors.border,
+            backgroundColor: colors.fill,
+            pointBackgroundColor: colors.border,
+            pointBorderColor: 'rgba(255,255,255,0.65)',
+            pointHoverBackgroundColor: '#ffffff',
+            pointHoverBorderColor: colors.border,
+            fill:true
+          }]
+        };
       }
+
       getSleepData(range='7d') {
         const days = CONFIG.CHART_RANGES[range] || 7, data=[], labels=[], today=new Date();
         for (let i=days-1;i>=0;i--) { const d=new Date(today); d.setDate(today.getDate()-i); const ds=this.app.getDateString(d); const mins=this.app.state.tasks.filter(t => t.date===ds && t.category==='Sleep').reduce((a,t)=>a+t.duration,0); labels.push(d.toLocaleDateString('en-US',{month:'short',day:'numeric'})); data.push(parseFloat((mins/60).toFixed(1))); }
         return { labels, datasets: [{ label:'Sleep Hours', data, backgroundColor:'rgba(111, 66, 193, 0.7)', borderColor:'rgb(111,66,193)', borderWidth:1, borderRadius:4 }] };
       }
-      updateCharts() { if (!this.charts.productivity || !this.charts.sleep) return; this.charts.productivity.data=this.getProductivityData(this.app.elements['prod-range'].value); this.charts.sleep.data=this.getSleepData(this.app.elements['sleep-range'].value); this.charts.productivity.update('none'); this.charts.sleep.update('none'); }
-      setupChartControls() { this.app.elements['prod-range'].addEventListener('change', () => this.updateCharts()); this.app.elements['sleep-range'].addEventListener('change', () => this.updateCharts()); }
+
+      getCurrentFilteredTotalMinutes() {
+        const filter = this.getCurrentFilter();
+        const range = this.app.elements['prod-range'].value;
+        const days = CONFIG.CHART_RANGES[range] || 7;
+        const start = new Date();
+        start.setDate(start.getDate() - (days - 1));
+        const startDate = this.app.getDateString(start);
+        return this.app.state.tasks
+          .filter(t => t.date >= startDate && this.passesProductivityFilter(t, filter))
+          .reduce((sum, t) => sum + t.duration, 0);
+      }
+
+      animateFilteredTotal(fromMinutes, toMinutes) {
+        if (!this.app.elements['prod-filter-total']) return;
+        const el = this.app.elements['prod-filter-total'];
+        const start = performance.now();
+        const duration = 450;
+        const tick = (now) => {
+          const progress = Math.min(1, (now - start) / duration);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          const current = fromMinutes + (toMinutes - fromMinutes) * eased;
+          el.textContent = this.app.formatDuration(current);
+          if (progress < 1) this.totalCounterAnimation = requestAnimationFrame(tick);
+        };
+        if (this.totalCounterAnimation) cancelAnimationFrame(this.totalCounterAnimation);
+        this.totalCounterAnimation = requestAnimationFrame(tick);
+      }
+
+      updateCharts() {
+        if (!this.charts.productivity || !this.charts.sleep) return;
+        const prodRange = this.app.elements['prod-range'].value;
+        const sleepRange = this.app.elements['sleep-range'].value;
+        const filter = this.getCurrentFilter();
+
+        const prodContainer = this.app.elements['productivity-chart'].closest('.graph-canvas-container');
+        if (prodContainer) prodContainer.classList.add('filter-updating');
+
+        const fromMinutes = this.lastFilteredTotalMinutes;
+        this.charts.productivity.data=this.getProductivityData(prodRange, filter);
+        this.charts.sleep.data=this.getSleepData(sleepRange);
+        this.charts.productivity.update();
+        this.charts.sleep.update();
+
+        const toMinutes = this.getCurrentFilteredTotalMinutes();
+        this.lastFilteredTotalMinutes = toMinutes;
+        this.animateFilteredTotal(fromMinutes, toMinutes);
+        setTimeout(() => { if (prodContainer) prodContainer.classList.remove('filter-updating'); }, 360);
+      }
+
+      setupChartControls() {
+        this.app.elements['prod-range'].addEventListener('change', () => this.updateCharts());
+        this.app.elements['prod-filter'].addEventListener('change', () => this.updateCharts());
+        this.app.elements['sleep-range'].addEventListener('change', () => this.updateCharts());
+      }
     }
     class EventManager {
       constructor(app) { this.app = app; }
@@ -1268,9 +1831,10 @@
         this.app.elements['report-modal'].addEventListener('click', e => { if (e.target === this.app.elements['report-modal']) this.app.uiManager.hideReport(); });
       }
     }
+    window.classifyActivity = (userInput) => ActivityClassifier.classify(userInput);
     window.app = new DisciplineTracker();
     document.addEventListener('DOMContentLoaded', () => window.app.initialize());
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && window.app.taskManager) { window.app.taskManager.updateStats(); window.app.taskManager.renderTasks(); window.app.taskManager.renderFavorites(); } });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && window.app.taskManager) { window.app.taskManager.updateStats(); window.app.taskManager.renderTasks(); window.app.taskManager.renderFavorites(); if (window.app.shadowEngine) window.app.shadowEngine.refresh(false); } });
     window.addEventListener('beforeunload', () => { if (window.app?.stopwatch?.animationFrameId) cancelAnimationFrame(window.app.stopwatch.animationFrameId); });
   </script>
 </body>
