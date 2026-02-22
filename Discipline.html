@@ -404,6 +404,39 @@
       color: var(--text-secondary);
       margin-bottom: 0.45rem;
     }
+    .shadow-subtitle {
+      margin: 0.65rem 0 0.4rem;
+      font-size: 0.78rem;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.65);
+    }
+    .shadow-verdict {
+      margin: 0.2rem 0 0.8rem;
+      padding: 0.55rem 0.7rem;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.03);
+      color: var(--text-accent);
+      font-size: 0.86rem;
+    }
+    .shadow-goal-list {
+      margin-top: 0.6rem;
+      display: grid;
+      gap: 0.4rem;
+    }
+    .shadow-goal-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.6rem;
+      font-size: 0.84rem;
+      color: var(--text-secondary);
+    }
+    .shadow-goal-item strong {
+      color: var(--text-accent);
+      font-weight: 600;
+    }
+    .shadow-goal-done { color: var(--success) !important; }
     .shadow-gap-positive { color: var(--danger); }
     .shadow-gap-negative { color: var(--success); }
     .shadow-gap-equal { color: var(--text-secondary); }
@@ -440,6 +473,28 @@
       transition: width 420ms ease, background 420ms ease, box-shadow 420ms ease;
       background: #dc3545;
     }
+    .shadow-duel-bar {
+      margin-top: 0.6rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      height: 8px;
+    }
+    .shadow-duel-you,
+    .shadow-duel-shadow {
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .shadow-duel-you-fill,
+    .shadow-duel-shadow-fill {
+      height: 100%;
+      width: 0%;
+      transition: width 420ms ease;
+    }
+    .shadow-duel-you-fill { background: rgba(40, 167, 69, 0.9); }
+    .shadow-duel-shadow-fill { background: rgba(220, 53, 69, 0.9); }
     .shadow-new-standard {
       animation: shadowPulse 520ms ease;
     }
@@ -747,18 +802,24 @@
       <div class="shadow-grid">
         <div class="shadow-card" id="shadow-current-card">
           <div class="shadow-card-title">⚔ Current You</div>
+          <div class="shadow-verdict" id="shadow-verdict">Verdict loading...</div>
+          <div class="shadow-subtitle">Today Battle</div>
           <div class="shadow-main-value" id="shadow-current-minutes">0h 00m</div>
-          <div class="shadow-line">Weekly 7-Day Avg: <strong id="shadow-weekly-average">0h 00m</strong></div>
-          <div class="shadow-line">Momentum: <strong id="shadow-momentum" class="shadow-momentum-flat">Stable</strong></div>
           <div class="shadow-line">Gap vs Shadow: <strong id="shadow-gap" class="shadow-gap-equal">0h 00m</strong></div>
-          <div class="shadow-line">Weekly Delta vs Shadow: <strong id="shadow-weekly-gap" class="shadow-gap-equal">0h 00m</strong></div>
-          <div class="shadow-line">Today's Target: <strong id="shadow-target">0h 00m</strong></div>
+          <div class="shadow-line">Need to tie today: <strong id="shadow-needed-tie">0h 00m</strong></div>
+          <div class="shadow-line">Need to lead today: <strong id="shadow-needed-lead">0h 00m</strong></div>
+          <div class="shadow-line">Shadow Defense Target (tomorrow): <strong id="shadow-defense-target">0h 00m</strong></div>
           <div class="shadow-line">Reached: <strong id="shadow-percent">0%</strong></div>
+          <div class="shadow-line">Penalty: <strong id="shadow-penalty" class="shadow-gap-positive">-0h 00m</strong></div>
+          <div class="shadow-subtitle">Daily Mission</div>
+          <div class="shadow-goal-list">
+            <div class="shadow-goal-item"><span>NPTEL (2h / 2 videos)</span><strong id="goal-nptel">0m • 0/2</strong></div>
+            <div class="shadow-goal-item"><span>YouTube Learning (2h / 2 videos)</span><strong id="goal-yt">0m • 0/2</strong></div>
+            <div class="shadow-goal-item"><span>Project Work (3h)</span><strong id="goal-project">0m</strong></div>
+          </div>
           <div>
             <span class="shadow-badge" id="shadow-status">OUT OF RANGE</span>
             <span class="shadow-badge" id="shadow-pressure">Pressure: High</span>
-            <span class="shadow-badge" id="shadow-my-wins">My Wins (Month): 0</span>
-            <span class="shadow-badge" id="shadow-last-win">Since Last Win: 0d</span>
           </div>
           <div class="shadow-progress">
             <div class="shadow-progress-fill" id="shadow-progress-fill"></div>
@@ -767,13 +828,24 @@
         <div class="shadow-card" id="shadow-standard-card">
           <div class="shadow-card-title">🌑 The Shadow</div>
           <div class="shadow-main-value" id="shadow-average">0h 00m</div>
+          <div class="shadow-subtitle">Monthly Battle</div>
           <div>
             <span class="shadow-badge" id="shadow-rank">Rank: Initiate</span>
+            <span class="shadow-badge" id="shadow-badge">Baseline</span>
           </div>
           <div>
-            <span class="shadow-badge" id="shadow-badge">Baseline</span>
-            <span class="shadow-badge" id="shadow-wins">Shadow Wins (Month): 0</span>
-            <span class="shadow-badge" id="shadow-loss-streak">Shadow Lead Streak: 0d</span>
+            <span class="shadow-badge" id="shadow-score">Monthly Score: You 0 - Shadow 0</span>
+            <span class="shadow-badge" id="shadow-duel">Leader: Even</span>
+            <span class="shadow-badge" id="shadow-lead-margin">Lead Margin: 0</span>
+            <span class="shadow-badge" id="shadow-trend">Monthly trend: 0%</span>
+          </div>
+          <div class="shadow-line">Weekly 7-Day Avg: <strong id="shadow-weekly-average">0h 00m</strong></div>
+          <div class="shadow-line">Momentum: <strong id="shadow-momentum" class="shadow-momentum-flat">Stable</strong></div>
+          <div class="shadow-line">Weekly Delta vs Shadow: <strong id="shadow-weekly-gap" class="shadow-gap-equal">0h 00m</strong></div>
+          <div class="shadow-line">Today's Target: <strong id="shadow-target">0h 00m</strong></div>
+          <div class="shadow-duel-bar">
+            <div class="shadow-duel-you"><div class="shadow-duel-you-fill" id="shadow-duel-you-fill"></div></div>
+            <div class="shadow-duel-shadow"><div class="shadow-duel-shadow-fill" id="shadow-duel-shadow-fill"></div></div>
           </div>
           <div class="shadow-line">Your Strongest Historical 7-Day Standard</div>
           <div class="shadow-line" id="shadow-note">Calculated from real historical data only</div>
@@ -831,6 +903,7 @@
         <div class="tasks-list" id="tasks-list">
           <!-- Tasks will be dynamically inserted here -->
         </div>
+
       </div>
       <!-- Graphs Section -->
       <div class="graphs-container">
@@ -929,7 +1002,12 @@
         SHADOW_AVG: 'discipline_tracker_shadow_avg'
       },
       MOTIVATION_INTERVAL: 15000,
-      CHART_RANGES: { '7d': 7, '30d': 30, '3m': 90, '6m': 180, '1y': 365 }
+      CHART_RANGES: { '7d': 7, '30d': 30, '3m': 90, '6m': 180, '1y': 365 },
+      DAILY_GOALS: [
+        { id: 'nptel', label: 'NPTEL', minutesTarget: 120, sessionsTarget: 2, keywords: ['nptel'] },
+        { id: 'yt', label: 'YouTube Learning', minutesTarget: 120, sessionsTarget: 2, keywords: ['youtube', 'yt'] },
+        { id: 'project', label: 'Project Work', minutesTarget: 180, sessionsTarget: 0, keywords: ['project'] }
+      ]
     };
     const CATEGORY_DEFINITIONS = {
       'Sleep': ['Night Sleep', 'Nap', 'Recovery'],
@@ -1104,7 +1182,7 @@
       }
       initializeElements() {
         const elements = {};
-        ['stopwatch','task-input','start-btn','stop-btn','sleep-btn','add-favorite','active-task-indicator','active-task-name','active-task-start','favorites-grid','tasks-list','productive-time','sleep-time','total-time','streak-display','current-date','current-time','motivation-line','prod-range','prod-filter','prod-filter-total','sleep-range','productivity-chart','sleep-chart','streak-popup','streak-count','streak-message','close-streak','view-report','export-data','report-modal','report-content','close-modal','print-report','close-report','shadow-current-card','shadow-standard-card','shadow-current-minutes','shadow-percent','shadow-gap','shadow-status','shadow-progress-fill','shadow-average','shadow-rank','shadow-badge','shadow-wins','shadow-note','shadow-weekly-average','shadow-momentum','shadow-weekly-gap','shadow-target','shadow-pressure','shadow-my-wins','shadow-last-win','shadow-loss-streak'].forEach(id => elements[id] = document.getElementById(id));
+        ['stopwatch','task-input','start-btn','stop-btn','sleep-btn','add-favorite','active-task-indicator','active-task-name','active-task-start','favorites-grid','tasks-list','productive-time','sleep-time','total-time','streak-display','current-date','current-time','motivation-line','prod-range','prod-filter','prod-filter-total','sleep-range','productivity-chart','sleep-chart','streak-popup','streak-count','streak-message','close-streak','view-report','export-data','report-modal','report-content','close-modal','print-report','close-report','shadow-current-card','shadow-standard-card','shadow-current-minutes','shadow-percent','shadow-gap','shadow-status','shadow-progress-fill','shadow-average','shadow-rank','shadow-badge','shadow-duel','shadow-note','shadow-weekly-average','shadow-momentum','shadow-weekly-gap','shadow-target','shadow-pressure','shadow-score','shadow-needed-tie','shadow-needed-lead','shadow-defense-target','shadow-verdict','shadow-trend','shadow-lead-margin','shadow-duel-you-fill','shadow-duel-shadow-fill','shadow-penalty','goal-nptel','goal-yt','goal-project'].forEach(id => elements[id] = document.getElementById(id));
         return elements;
       }
       loadFromStorage(key) { try { const d = localStorage.getItem(key); return d ? JSON.parse(d) : null; } catch { return null; } }
@@ -1177,6 +1255,12 @@
         };
       }
       getDateString(date = new Date()) { const d = new Date(date); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+      getInferredWasteMinutesForDate(dateStr, sourceTasks = this.state.tasks) {
+        const trackedMinutes = sourceTasks
+          .filter(task => task.date === dateStr && Number.isFinite(task.duration) && task.duration > 0)
+          .reduce((sum, task) => sum + task.duration, 0);
+        return Math.max(0, 1440 - Math.min(1440, trackedMinutes));
+      }
       formatDuration(minutes) { const h=Math.floor(minutes/60),m=Math.floor(minutes%60); return `${h}h ${String(m).padStart(2,'0')}m`; }
       formatTime(ts) { return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
       isProductiveCategory(category) { return PRODUCTIVE_CATEGORIES.has(category); }
@@ -1324,10 +1408,55 @@
           const el=document.createElement('div');
           const isSleep = task.category === 'Sleep';
           el.className = `task-card ${isSleep ? 'sleep' : 'productive'}`;
-          el.innerHTML = `<div class="task-header"><div class="task-name">${isSleep ? '💤' : '⚡'} ${task.category} • ${task.subcategory}</div><div class="task-duration">${this.app.formatDuration(task.duration)}</div></div><div class="task-time">${this.app.formatTime(task.startTime)} - ${this.app.formatTime(task.endTime)}</div><div class="task-time">${task.description || ''}</div><div class="task-actions"><button class="btn delete-task-btn" data-id="${task.id}"><i class="fas fa-trash"></i> Delete</button></div>`;
+          el.innerHTML = `<div class="task-header"><div class="task-name">${isSleep ? '💤' : '⚡'} ${task.category} • ${task.subcategory}</div><div class="task-duration">${this.app.formatDuration(task.duration)}</div></div><div class="task-time">${this.app.formatTime(task.startTime)} - ${this.app.formatTime(task.endTime)}</div><div class="task-time">${task.description || ''}</div><div class="task-actions">${isSleep ? `<button class="btn edit-sleep-btn" data-id="${task.id}"><i class="fas fa-pen"></i> Edit Sleep</button>` : ''}<button class="btn delete-task-btn" data-id="${task.id}"><i class="fas fa-trash"></i> Delete</button></div>`;
           c.appendChild(el);
         });
         document.querySelectorAll('.delete-task-btn').forEach(btn => btn.addEventListener('click', e => this.deleteTask(e.currentTarget.getAttribute('data-id'))));
+        document.querySelectorAll('.edit-sleep-btn').forEach(btn => btn.addEventListener('click', e => this.editSleepTask(e.currentTarget.getAttribute('data-id'))));
+      }
+
+      editSleepTask(taskId) {
+        const task = this.app.state.tasks.find(t => t.id === taskId && t.category === 'Sleep');
+        if (!task) return;
+
+        const toEditable = (ts) => {
+          const d = new Date(ts);
+          const Y = d.getFullYear();
+          const M = String(d.getMonth() + 1).padStart(2, '0');
+          const D = String(d.getDate()).padStart(2, '0');
+          const h = String(d.getHours()).padStart(2, '0');
+          const m = String(d.getMinutes()).padStart(2, '0');
+          return `${Y}-${M}-${D} ${h}:${m}`;
+        };
+
+        const parseEditable = (value) => {
+          if (!value) return null;
+          const parsed = new Date(value.replace(' ', 'T'));
+          return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
+        };
+
+        const startInput = prompt('Sleep start (YYYY-MM-DD HH:mm)', toEditable(task.startTime));
+        if (startInput === null) return;
+        const endInput = prompt('Sleep end (YYYY-MM-DD HH:mm)', toEditable(task.endTime));
+        if (endInput === null) return;
+
+        const newStart = parseEditable(startInput.trim());
+        const newEnd = parseEditable(endInput.trim());
+        if (!newStart || !newEnd || newEnd <= newStart) {
+          alert('Invalid sleep time range.');
+          return;
+        }
+
+        task.startTime = newStart;
+        task.endTime = newEnd;
+        task.duration = Math.min(24 * 60, Math.max(1, Math.round((newEnd - newStart) / 60000)));
+        task.date = this.app.getDateString(new Date(newStart));
+        task.updatedAt = Date.now();
+
+        this.app.saveToStorage(CONFIG.STORAGE_KEYS.TASKS, this.app.state.tasks);
+        this.app.syncManager.queue({ type: 'upsert', entry: task, ts: Date.now() });
+        this.app.syncManager.flushQueue();
+        this.updateStats(); this.renderTasks(); this.app.graphManager.updateCharts(); this.app.updateStreak();
       }
       renderFavorites() {
         const container = this.app.elements['favorites-grid']; container.innerHTML='';
@@ -1363,23 +1492,43 @@
     class AnalyticsService {
       static buildMonthlyReport(tasks, year, month, thresholdMinutes = CONFIG.DAILY_PRODUCTIVITY_THRESHOLD_MINUTES) {
         const monthTasks = tasks.filter(t => { const d = new Date(t.startTime); return d.getFullYear() === year && d.getMonth() === month; });
-        const prevTasks = tasks.filter(t => { const d = new Date(t.startTime); const pm = month === 0 ? 11 : month - 1; const py = month === 0 ? year - 1 : year; return d.getFullYear() === py && d.getMonth() === pm; });
+        const pm = month === 0 ? 11 : month - 1;
+        const py = month === 0 ? year - 1 : year;
+        const prevTasks = tasks.filter(t => { const d = new Date(t.startTime); return d.getFullYear() === py && d.getMonth() === pm; });
         const totals = Object.fromEntries(Object.keys(CATEGORY_DEFINITIONS).map(c => [c, 0]));
         const daily = {};
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        for (let day = 1; day <= daysInMonth; day++) {
+          const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          daily[date] = { productive: 0, sleep: 0, waste: 0, total: 0, inferredWaste: 0 };
+        }
+
         monthTasks.forEach(t => {
           totals[t.category] = (totals[t.category] || 0) + t.duration;
-          if (!daily[t.date]) daily[t.date] = { productive: 0, sleep: 0, waste: 0, total: 0 };
-          if (PRODUCTIVE_CATEGORIES.has(t.category)) daily[t.date].productive += t.duration;
-          if (t.category === 'Sleep') daily[t.date].sleep += t.duration;
-          if (t.category === 'Time Waste / Distraction') daily[t.date].waste += t.duration;
-          daily[t.date].total += t.duration;
+          const day = daily[t.date] || (daily[t.date] = { productive: 0, sleep: 0, waste: 0, total: 0, inferredWaste: 0 });
+          if (PRODUCTIVE_CATEGORIES.has(t.category)) day.productive += t.duration;
+          if (t.category === 'Sleep') day.sleep += t.duration;
+          if (t.category === 'Time Waste / Distraction') day.waste += t.duration;
+          day.total += t.duration;
         });
+
+        let inferredWasteMinutes = 0;
+        Object.values(daily).forEach(day => {
+          const inferredWaste = Math.max(0, 1440 - Math.min(1440, day.total));
+          day.inferredWaste = inferredWaste;
+          day.waste += inferredWaste;
+          day.total += inferredWaste;
+          inferredWasteMinutes += inferredWaste;
+        });
+        totals['Time Waste / Distraction'] = (totals['Time Waste / Distraction'] || 0) + inferredWasteMinutes;
+
         const totalMinutes = Object.values(totals).reduce((a,b) => a+b, 0);
         const productiveMinutes = Object.entries(totals).filter(([k]) => PRODUCTIVE_CATEGORIES.has(k)).reduce((a,[,v]) => a+v,0);
         const sleepMinutes = totals['Sleep'] || 0;
         const wasteMinutes = totals['Time Waste / Distraction'] || 0;
         const awakeMinutes = Math.max(0, totalMinutes - sleepMinutes);
-        const activeDays = Math.max(1, Object.keys(daily).length);
+        const activeDays = Math.max(1, daysInMonth);
         const productivityRatio = awakeMinutes ? productiveMinutes / awakeMinutes : 0;
         const pctByCategory = Object.fromEntries(Object.keys(totals).map(k => [k, totalMinutes ? (totals[k] / totalMinutes * 100) : 0]));
         const bestProductiveDay = Object.entries(daily).sort((a,b) => b[1].productive - a[1].productive)[0] || null;
@@ -1387,7 +1536,17 @@
         const sleepStreak = AnalyticsService.longestSleepConsistencyStreak(daily, 420);
         const underProductiveDays = Object.entries(daily).filter(([,v]) => v.productive < thresholdMinutes).length;
         const prevProductive = prevTasks.filter(t => PRODUCTIVE_CATEGORIES.has(t.category)).reduce((a,t)=>a+t.duration,0);
-        const prevWaste = prevTasks.filter(t => t.category === 'Time Waste / Distraction').reduce((a,t)=>a+t.duration,0);
+        const prevDaysInMonth = new Date(py, pm + 1, 0).getDate();
+        const prevDailyTotals = {};
+        for (let day = 1; day <= prevDaysInMonth; day++) {
+          const date = `${py}-${String(pm + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          prevDailyTotals[date] = 0;
+        }
+        prevTasks.forEach(t => {
+          prevDailyTotals[t.date] = (prevDailyTotals[t.date] || 0) + t.duration;
+        });
+        const prevInferredWaste = Object.values(prevDailyTotals).reduce((sum, tracked) => sum + Math.max(0, 1440 - Math.min(1440, tracked)), 0);
+        const prevWaste = prevTasks.filter(t => t.category === 'Time Waste / Distraction').reduce((a,t)=>a+t.duration,0) + prevInferredWaste;
         const productiveBreakdown = AnalyticsService.breakdown(monthTasks, 'Productive Work');
         const trainingBreakdown = AnalyticsService.breakdown(monthTasks, 'Physical Training');
         return {
@@ -1397,6 +1556,7 @@
           productiveMinutes,
           sleepMinutes,
           wasteMinutes,
+          inferredWasteMinutes,
           awakeMinutes,
           pctByCategory,
           dailyAverageSleep: sleepMinutes / activeDays,
@@ -1481,29 +1641,41 @@
         const monthName = now.toLocaleString('default', { month: 'long' });
         const rows = Object.keys(r.daily).sort().map(date => {
           const d = r.daily[date];
-          return `<tr><td style="padding:0.75rem;border-bottom:1px solid var(--border);">${new Date(date).toLocaleDateString('en-US',{month:'short',day:'numeric',weekday:'short'})}</td><td style="padding:0.75rem;border-bottom:1px solid var(--border);">${this.app.formatDuration(d.productive)}</td><td style="padding:0.75rem;border-bottom:1px solid var(--border);">${this.app.formatDuration(d.sleep)}</td><td style="padding:0.75rem;border-bottom:1px solid var(--border);">${this.app.formatDuration(d.waste)}</td><td style="padding:0.75rem;border-bottom:1px solid var(--border);">${this.app.formatDuration(d.total)}</td></tr>`;
+          return `<tr><td style="padding:0.75rem;border-bottom:1px solid var(--border);">${new Date(date).toLocaleDateString('en-US',{month:'short',day:'numeric',weekday:'short'})}</td><td style="padding:0.75rem;border-bottom:1px solid var(--border);">${this.app.formatDuration(d.productive)}</td><td style="padding:0.75rem;border-bottom:1px solid var(--border);">${this.app.formatDuration(d.sleep)}</td><td style="padding:0.75rem;border-bottom:1px solid var(--border);">${this.app.formatDuration(d.waste)}</td></tr>`;
         }).join('');
-        const catLines = Object.entries(r.totals).map(([k,v]) => `<li>${k}: ${this.app.formatDuration(v)} (${r.pctByCategory[k].toFixed(1)}%)</li>`).join('');
-        const prodBreak = Object.entries(r.productiveBreakdown).map(([k,v]) => `<li>${k}: ${this.app.formatDuration(v)}</li>`).join('') || '<li>No entries</li>';
-        const trainBreak = Object.entries(r.trainingBreakdown).map(([k,v]) => `<li>${k}: ${this.app.formatDuration(v)}</li>`).join('') || '<li>No entries</li>';
+        const catRows = Object.entries(r.totals).map(([k,v]) => `<tr><td style="padding:0.75rem;border-bottom:1px solid var(--border);">${k}</td><td style="padding:0.75rem;border-bottom:1px solid var(--border);">${this.app.formatDuration(v)}</td><td style="padding:0.75rem;border-bottom:1px solid var(--border);">${r.pctByCategory[k].toFixed(1)}%</td></tr>`).join('');
+        const prodBreak = Object.entries(r.productiveBreakdown).map(([k,v]) => `<tr><td style="padding:0.75rem;border-bottom:1px solid var(--border);">${k}</td><td style="padding:0.75rem;border-bottom:1px solid var(--border);">${this.app.formatDuration(v)}</td></tr>`).join('') || '<tr><td style="padding:0.75rem;" colspan="2">No entries</td></tr>';
+        const trainBreak = Object.entries(r.trainingBreakdown).map(([k,v]) => `<tr><td style="padding:0.75rem;border-bottom:1px solid var(--border);">${k}</td><td style="padding:0.75rem;border-bottom:1px solid var(--border);">${this.app.formatDuration(v)}</td></tr>`).join('') || '<tr><td style="padding:0.75rem;" colspan="2">No entries</td></tr>';
         const best = r.bestProductiveDay ? `${r.bestProductiveDay[0]} (${this.app.formatDuration(r.bestProductiveDay[1].productive)})` : 'N/A';
         const worst = r.worstWasteDay ? `${r.worstWasteDay[0]} (${this.app.formatDuration(r.worstWasteDay[1].waste)})` : 'N/A';
         const sleepInsights = AnalyticsService.buildSleepInsights(this.app.state.tasks);
+        const summaryRows = [
+          ['Total Sleep', this.app.formatDuration(r.sleepMinutes)],
+          ['Total Productive', this.app.formatDuration(r.productiveMinutes)],
+          ['Total Waste', `${this.app.formatDuration(r.wasteMinutes)} (Untracked: ${this.app.formatDuration(r.inferredWasteMinutes)})`],
+          ['Total Awake', this.app.formatDuration(r.awakeMinutes)],
+          ['Productivity Ratio', `${(r.productivityRatio*100).toFixed(1)}%`],
+          ['Daily Avg Sleep', this.app.formatDuration(r.dailyAverageSleep)],
+          ['Daily Avg Productive', this.app.formatDuration(r.dailyAverageProductive)],
+          ['Improvement vs Previous Month', `Productive ${this.app.formatDuration(r.improvement.productiveDeltaMinutes)} | Waste ${this.app.formatDuration(r.improvement.wasteDeltaMinutes)}`],
+          ['Best Productive Day', best],
+          ['Worst Waste Day', worst],
+          ['Sleep Consistency', `Longest >=7h streak: ${r.sleepConsistency.longestStreakDays} days`],
+          ['Sleep Last 7 Days', `Avg ${this.app.formatDuration(sleepInsights.averageLast7)} | ${sleepInsights.sleepDebt > 0 ? `Debt ${this.app.formatDuration(sleepInsights.sleepDebt)}` : `Surplus ${this.app.formatDuration(Math.abs(sleepInsights.sleepDebt))}`} | Consistency ${sleepInsights.consistency}`],
+          ['Alerts', r.alerts.underProductivity ? `Under productivity (${r.alerts.underProductiveDays} days below ${this.app.formatDuration(r.alerts.thresholdMinutes)})` : 'None']
+        ].map(([label, value]) => `<tr><td style="padding:0.75rem;border-bottom:1px solid var(--border);font-weight:600;">${label}</td><td style="padding:0.75rem;border-bottom:1px solid var(--border);">${value}</td></tr>`).join('');
         this.app.elements['report-content'].innerHTML = `
           <h3 style="margin-bottom:1rem;">${monthName} ${r.year} Monthly Report</h3>
-          <p><strong>Total sleep:</strong> ${this.app.formatDuration(r.sleepMinutes)} | <strong>Total productive:</strong> ${this.app.formatDuration(r.productiveMinutes)} | <strong>Total waste:</strong> ${this.app.formatDuration(r.wasteMinutes)}</p>
-          <p><strong>Total awake:</strong> ${this.app.formatDuration(r.awakeMinutes)} | <strong>Productivity ratio:</strong> ${(r.productivityRatio*100).toFixed(1)}%</p>
-          <p><strong>Daily avg sleep:</strong> ${this.app.formatDuration(r.dailyAverageSleep)} | <strong>Daily avg productive:</strong> ${this.app.formatDuration(r.dailyAverageProductive)}</p>
-          <p><strong>Improvement vs previous month:</strong> Productive ${this.app.formatDuration(r.improvement.productiveDeltaMinutes)} | Waste ${this.app.formatDuration(r.improvement.wasteDeltaMinutes)}</p>
-          <p><strong>Best productive day:</strong> ${best} | <strong>Worst waste day:</strong> ${worst}</p>
-          <p><strong>Sleep consistency:</strong> longest >=7h streak is ${r.sleepConsistency.longestStreakDays} days</p>
-          <p><strong>Sleep (last 7 days):</strong> Avg ${this.app.formatDuration(sleepInsights.averageLast7)} | ${sleepInsights.sleepDebt > 0 ? `Debt ${this.app.formatDuration(sleepInsights.sleepDebt)}` : `Surplus ${this.app.formatDuration(Math.abs(sleepInsights.sleepDebt))}`} | Consistency ${sleepInsights.consistency}</p>
-          <p><strong>Alerts:</strong> ${r.alerts.underProductivity ? `Under productivity (${r.alerts.underProductiveDays} days below ${this.app.formatDuration(r.alerts.thresholdMinutes)})` : 'None'}</p>
-          <h4 style="margin-top:1rem;">Category Totals</h4><ul>${catLines}</ul>
-          <h4>Productive Work Breakdown</h4><ul>${prodBreak}</ul>
-          <h4>Physical Training Breakdown</h4><ul>${trainBreak}</ul>
+          <h4 style="margin-top:1rem;">Summary</h4>
+          <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><tbody>${summaryRows}</tbody></table></div>
+          <h4 style="margin-top:1rem;">Category Totals</h4>
+          <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background: rgba(30, 30, 30, 0.8);"><th style="padding:0.75rem;text-align:left;border-bottom:1px solid var(--border);">Category</th><th style="padding:0.75rem;text-align:left;border-bottom:1px solid var(--border);">Duration</th><th style="padding:0.75rem;text-align:left;border-bottom:1px solid var(--border);">Share</th></tr></thead><tbody>${catRows}</tbody></table></div>
+          <h4 style="margin-top:1rem;">Productive Work Breakdown</h4>
+          <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background: rgba(30, 30, 30, 0.8);"><th style="padding:0.75rem;text-align:left;border-bottom:1px solid var(--border);">Subcategory</th><th style="padding:0.75rem;text-align:left;border-bottom:1px solid var(--border);">Duration</th></tr></thead><tbody>${prodBreak}</tbody></table></div>
+          <h4 style="margin-top:1rem;">Physical Training Breakdown</h4>
+          <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background: rgba(30, 30, 30, 0.8);"><th style="padding:0.75rem;text-align:left;border-bottom:1px solid var(--border);">Subcategory</th><th style="padding:0.75rem;text-align:left;border-bottom:1px solid var(--border);">Duration</th></tr></thead><tbody>${trainBreak}</tbody></table></div>
           <h4>Daily Breakdown</h4>
-          <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background: rgba(30, 30, 30, 0.8);"><th style="padding:0.75rem;text-align:left;border-bottom:1px solid var(--border);">Date</th><th style="padding:0.75rem;text-align:left;border-bottom:1px solid var(--border);">Productive</th><th style="padding:0.75rem;text-align:left;border-bottom:1px solid var(--border);">Sleep</th><th style="padding:0.75rem;text-align:left;border-bottom:1px solid var(--border);">Waste</th><th style="padding:0.75rem;text-align:left;border-bottom:1px solid var(--border);">Total</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+          <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background: rgba(30, 30, 30, 0.8);"><th style="padding:0.75rem;text-align:left;border-bottom:1px solid var(--border);">Date</th><th style="padding:0.75rem;text-align:left;border-bottom:1px solid var(--border);">Productive</th><th style="padding:0.75rem;text-align:left;border-bottom:1px solid var(--border);">Sleep</th><th style="padding:0.75rem;text-align:left;border-bottom:1px solid var(--border);">Total Waste</th></tr></thead><tbody>${rows}</tbody></table></div>`;
         this.app.elements['report-modal'].style.display = 'flex';
       }
       hideReport() { this.app.elements['report-modal'].style.display = 'none'; }
@@ -1552,6 +1724,44 @@
           dailyMap.set(task.date, (dailyMap.get(task.date) || 0) + task.duration);
         });
         return dailyMap;
+      }
+
+      getTodayGoalProgress() {
+        const today = this.app.getDateString(new Date());
+        const goals = CONFIG.DAILY_GOALS || [];
+        const progress = {};
+
+        goals.forEach(goal => {
+          progress[goal.id] = { minutes: 0, sessions: 0, minutesTarget: goal.minutesTarget || 0, sessionsTarget: goal.sessionsTarget || 0 };
+        });
+
+        this.app.state.tasks.forEach(task => {
+          if (!task || task.date !== today || !Number.isFinite(task.duration) || task.duration <= 0) return;
+          const haystack = `${task.description || ''} ${task.subcategory || ''} ${task.category || ''}`.toLowerCase();
+          goals.forEach(goal => {
+            if (!goal.keywords?.some(word => haystack.includes(word))) return;
+            progress[goal.id].minutes += task.duration;
+            progress[goal.id].sessions += 1;
+          });
+        });
+
+        return progress;
+      }
+
+      formatGoalProgress(goal, progress) {
+        const minutesText = this.app.formatDuration(progress.minutes);
+        if (goal.sessionsTarget > 0) return `${minutesText} • ${progress.sessions}/${goal.sessionsTarget}`;
+        return minutesText;
+      }
+
+      applyGoalStatus(elementId, goal, progress) {
+        const el = this.app.elements[elementId];
+        if (!el) return;
+        const hitMinutes = progress.minutes >= goal.minutesTarget;
+        const hitSessions = goal.sessionsTarget > 0 ? progress.sessions >= goal.sessionsTarget : true;
+        const done = hitMinutes && hitSessions;
+        el.textContent = this.formatGoalProgress(goal, progress);
+        el.classList.toggle('shadow-goal-done', done);
       }
 
       buildDailyProductiveSeries() {
@@ -1632,18 +1842,31 @@
         return { label: 'Stable', cls: 'shadow-momentum-flat' };
       }
 
-      getPressure(percentage, weeklyGap) {
-        if (percentage >= 100 && weeklyGap <= 0) return { label: 'Pressure: Controlled', cls: 'shadow-pressure-low' };
-        if (percentage >= 90) return { label: 'Pressure: Elevated', cls: 'shadow-pressure-mid' };
-        if (percentage >= 70) return { label: 'Pressure: High', cls: 'shadow-pressure-mid' };
+      getPressure(percentage, weeklyGap, recentWinRate) {
+        // Penalty-only pressure model: no positive buff reductions.
+        const weeklyPenalty = weeklyGap > 0 ? 1 : 0;
+        const trendPenalty = recentWinRate < 0.35 ? 2 : (recentWinRate < 0.55 ? 1 : 0);
+
+        let level = 0; // 0 controlled, 1 elevated, 2 high, 3 critical
+        if (percentage >= 100) level = 0;
+        else if (percentage >= 90) level = 1;
+        else if (percentage >= 70) level = 2;
+        else level = 3;
+
+        level = Math.min(3, level + weeklyPenalty + trendPenalty);
+
+        if (level <= 0) return { label: 'Pressure: Controlled', cls: 'shadow-pressure-low' };
+        if (level === 1) return { label: 'Pressure: Elevated', cls: 'shadow-pressure-mid' };
+        if (level === 2) return { label: 'Pressure: High', cls: 'shadow-pressure-mid' };
         return { label: 'Pressure: Critical', cls: 'shadow-pressure-high' };
       }
 
       countShadowWinsThisMonth(dailyMap, shadowAvg) {
-        if (shadowAvg <= 0) return { myWins: 0, shadowWins: 0, activeDays: 0 };
+        if (shadowAvg <= 0) return { myWins: 0, shadowWins: 0, activeDays: 0, recentWinRate: 0 };
         const now = new Date();
         const month = now.getMonth();
         const year = now.getFullYear();
+        const monthDays = [];
         let myWins = 0;
         let activeDays = 0;
 
@@ -1651,49 +1874,31 @@
           const d = new Date(date);
           if (d.getFullYear() !== year || d.getMonth() !== month) continue;
           activeDays += 1;
-          if (minutes >= shadowAvg) myWins++;
+          const isWin = minutes >= shadowAvg;
+          if (isWin) myWins++;
+          monthDays.push({ date, isWin });
         }
+
+        monthDays.sort((a, b) => a.date.localeCompare(b.date));
+        const recent = monthDays.slice(-7);
+        const recentWins = recent.filter(d => d.isWin).length;
+        const recentWinRate = recent.length ? (recentWins / recent.length) : 0;
 
         const shadowWins = Math.max(0, activeDays - myWins);
-        return { myWins, shadowWins, activeDays };
+        return { myWins, shadowWins, activeDays, recentWinRate };
       }
 
-      getSortedRecentMonthDays(dailyMap) {
-        const now = new Date();
-        const month = now.getMonth();
-        const year = now.getFullYear();
-        return [...dailyMap.entries()]
-          .filter(([date]) => {
-            const d = new Date(date);
-            return d.getFullYear() === year && d.getMonth() === month;
-          })
-          .sort((a, b) => a[0].localeCompare(b[0]));
-      }
-
-      getDaysSinceLastShadowWin(dailyMap, shadowAvg) {
-        if (shadowAvg <= 0) return 0;
-        const days = this.getSortedRecentMonthDays(dailyMap);
-        if (!days.length) return 0;
-        let distance = 0;
-        for (let i = days.length - 1; i >= 0; i--) {
-          const minutes = days[i][1];
-          if (minutes >= shadowAvg) return distance;
-          distance += 1;
-        }
-        return distance;
-      }
-
-      getShadowLeadStreak(dailyMap, shadowAvg) {
-        if (shadowAvg <= 0) return 0;
-        const days = this.getSortedRecentMonthDays(dailyMap);
-        if (!days.length) return 0;
-        let streak = 0;
-        for (let i = days.length - 1; i >= 0; i--) {
-          const minutes = days[i][1];
-          if (minutes < shadowAvg) streak += 1;
-          else break;
-        }
-        return streak;
+      getPenalty(todayMinutes, shadowAvg, weeklyGap, recentWinRate) {
+        let points = 0;
+        if (todayMinutes < shadowAvg) points += 1;
+        if (weeklyGap > 0) points += 1;
+        if (recentWinRate < 0.5) points += 1;
+        const today = this.app.getDateString();
+        const untracked = this.app.getInferredWasteMinutesForDate(today, this.app.state.tasks);
+        if (untracked >= 300) points += 2;
+        else if (untracked >= 120) points += 1;
+        const minutes = points * 15;
+        return { points, minutes, untracked };
       }
 
       render({ todayMinutes, shadowAvg, currentAvg, previousAvg, hasMomentumBaseline, isNewStandard }) {
@@ -1704,14 +1909,24 @@
 
         const dailyMap = this.getDailyProductiveMap();
         const competition = this.countShadowWinsThisMonth(dailyMap, shadowAvg);
-        const daysSinceLastWin = this.getDaysSinceLastShadowWin(dailyMap, shadowAvg);
-        const shadowLeadStreak = this.getShadowLeadStreak(dailyMap, shadowAvg);
+        const scoreDiff = competition.myWins - competition.shadowWins;
         const targetToday = shadowAvg > 0 ? Math.ceil(shadowAvg + 1) : 0;
+        const neededTie = Math.max(0, shadowAvg - todayMinutes);
+        const neededLead = Math.max(0, shadowAvg - todayMinutes + 1);
+        const penalty = this.getPenalty(todayMinutes, shadowAvg, weeklyGap, competition.recentWinRate);
+        const defenseTarget = Math.max(0, Math.ceil(shadowAvg + penalty.minutes));
+        const totalDuel = Math.max(1, competition.myWins + competition.shadowWins);
+        const youShare = Math.max(0, Math.min(100, (competition.myWins / totalDuel) * 100));
+        const shadowShare = Math.max(0, Math.min(100, (competition.shadowWins / totalDuel) * 100));
 
         this.app.elements['shadow-current-minutes'].textContent = this.app.formatDuration(todayMinutes);
         this.app.elements['shadow-average'].textContent = this.app.formatDuration(shadowAvg);
         this.app.elements['shadow-weekly-average'].textContent = this.app.formatDuration(currentAvg);
         this.app.elements['shadow-target'].textContent = this.app.formatDuration(targetToday);
+        this.app.elements['shadow-needed-tie'].textContent = this.app.formatDuration(neededTie);
+        this.app.elements['shadow-needed-lead'].textContent = this.app.formatDuration(neededLead);
+        this.app.elements['shadow-defense-target'].textContent = this.app.formatDuration(defenseTarget);
+        this.app.elements['shadow-penalty'].textContent = `-${this.app.formatDuration(penalty.minutes)} (${penalty.points}pt)`;
         this.app.elements['shadow-weekly-gap'].textContent = `${weeklyGap >= 0 ? '-' : '+'}${this.app.formatDuration(Math.abs(weeklyGap))}`;
         this.app.elements['shadow-weekly-gap'].className = weeklyGap > 0 ? 'shadow-gap-positive' : (weeklyGap < 0 ? 'shadow-gap-negative' : 'shadow-gap-equal');
 
@@ -1726,7 +1941,7 @@
         gapEl.className = gap > 0 ? 'shadow-gap-positive' : (gap < 0 ? 'shadow-gap-negative' : 'shadow-gap-equal');
 
         this.app.elements['shadow-status'].textContent = this.getCurrentStatus(percentage);
-        const pressure = this.getPressure(percentage, weeklyGap);
+        const pressure = this.getPressure(percentage, weeklyGap, competition.recentWinRate);
         const pressureEl = this.app.elements['shadow-pressure'];
         pressureEl.textContent = pressure.label;
         pressureEl.className = `shadow-badge ${pressure.cls}`;
@@ -1734,10 +1949,21 @@
         const rank = this.getShadowRank(shadowAvg);
         this.app.elements['shadow-rank'].textContent = `Rank: ${rank.title}`;
         this.app.elements['shadow-badge'].textContent = rank.badge;
-        this.app.elements['shadow-my-wins'].textContent = `My Wins (Month): ${competition.myWins}`;
-        this.app.elements['shadow-wins'].textContent = `Shadow Wins (Month): ${competition.shadowWins}`;
-        this.app.elements['shadow-last-win'].textContent = `Since Last Win: ${daysSinceLastWin}d`;
-        this.app.elements['shadow-loss-streak'].textContent = `Shadow Lead Streak: ${shadowLeadStreak}d`;
+        this.app.elements['shadow-score'].textContent = `Monthly Score: You ${competition.myWins} - Shadow ${competition.shadowWins}`;
+        this.app.elements['shadow-duel'].textContent = scoreDiff > 0 ? `Leader: You (+${scoreDiff})` : (scoreDiff < 0 ? `Leader: Shadow (+${Math.abs(scoreDiff)})` : 'Leader: Even');
+        this.app.elements['shadow-lead-margin'].textContent = `Lead Margin: ${Math.abs(scoreDiff)}`;
+        this.app.elements['shadow-trend'].textContent = `Monthly trend: ${(competition.recentWinRate * 100).toFixed(0)}% win rate`;
+        this.app.elements['shadow-verdict'].textContent = scoreDiff >= 0
+          ? `You lead monthly by ${Math.abs(scoreDiff)} win(s); hold at least ${this.app.formatDuration(defenseTarget)} tomorrow (penalty-adjusted).`
+          : `You are behind by ${this.app.formatDuration(neededTie)} today and ${Math.abs(scoreDiff)} monthly win(s).`;
+
+        const goalProgress = this.getTodayGoalProgress();
+        this.applyGoalStatus('goal-nptel', CONFIG.DAILY_GOALS[0], goalProgress.nptel || { minutes: 0, sessions: 0, minutesTarget: 120, sessionsTarget: 2 });
+        this.applyGoalStatus('goal-yt', CONFIG.DAILY_GOALS[1], goalProgress.yt || { minutes: 0, sessions: 0, minutesTarget: 120, sessionsTarget: 2 });
+        this.applyGoalStatus('goal-project', CONFIG.DAILY_GOALS[2], goalProgress.project || { minutes: 0, sessions: 0, minutesTarget: 180, sessionsTarget: 0 });
+
+        this.app.elements['shadow-duel-you-fill'].style.width = `${youShare}%`;
+        this.app.elements['shadow-duel-shadow-fill'].style.width = `${shadowShare}%`;
         this.app.elements['shadow-note'].textContent = 'Calculated from real historical data only';
 
         const fill = this.app.elements['shadow-progress-fill'];
