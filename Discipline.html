@@ -3131,7 +3131,7 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         });
       }
 
-      syncMissionFromRoadmap() {
+      startMissionTask(index) {
         const tasks = this.getDailyMissionTasks();
         const taskIds = ['mission-task-1', 'mission-task-2', 'mission-task-3', 'mission-task-4'];
         const valueIds = ['goal-nptel', 'goal-yt', 'goal-project', 'goal-revision'];
@@ -3172,22 +3172,54 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         }
       }
 
+      syncMissionFromRoadmap() {
+        const tasks = this.getDailyMissionTasks();
+        const container = document.querySelector('.shadow-goal-list');
+        if (!container) return;
+
+        const taskIds = ['mission-task-1', 'mission-task-2', 'mission-task-3', 'mission-task-4'];
+        const valueIds = ['goal-nptel', 'goal-yt', 'goal-project', 'goal-revision'];
+
+        container.innerHTML = tasks.map((item, idx) => {
+          const threshold = item.progress?.threshold || this.getThresholdForTopic(item.topic);
+          const done = !!item.done;
+          const disabled = item.type === 'revision' && !item.active;
+          const valueText = disabled
+            ? 'Pending'
+            : `${this.app.formatDuration(item.progress?.minutes || 0)} / ${this.app.formatDuration(threshold)}`;
+          const labelId = idx < 4 ? ` id="${taskIds[idx]}"` : '';
+          const valueId = idx < 4 ? ` id="${valueIds[idx]}"` : '';
+          const doneCls = done ? ' shadow-goal-done' : '';
+          return `<div class="shadow-goal-item"><span${labelId}>${idx + 1}. ${this.escapeHtml(item.topic)}</span><button class="btn btn-secondary mission-start-btn" data-mission-index="${idx}" ${disabled ? 'disabled' : ''} title="Start mission task">⭐</button><strong${valueId} class="${doneCls.trim()}">${this.escapeHtml(valueText)}</strong></div>`;
+        }).join('');
+
+        const active = this.getActiveRoadmapDay();
+        if (active) {
+          const topic = (active.day.text || '').split('\n')[0].trim();
+          const progress = this.getTopicProgress(topic);
+          if (!active.day.completed && progress.minutes >= this.getThresholdForTopic(topic)) {
+            active.day.completed = true;
+            this.app.saveToStorage(CONFIG.STORAGE_KEYS.ROADMAP_STATE, this.state.roadmap);
+            this.normalizeRoadmapDays();
+          }
+        }
+      }
+
       updatePenaltyTimer() {
         const el = this.app.elements['roadmap-penalty-timer'];
         if (!el) return;
         const { activeModule } = this.getRoadmapProgress();
         if (!activeModule) { el.textContent = 'No active penalty'; return; }
         const pending = activeModule.days.filter(d => !d.completed).length;
-        if (!pending) { el.textContent = 'Module complete'; return; }
-        const dayNumber = Number((activeModule.days[activeModule.days.length - 1]?.day || '').replace('Day ', '')) || 1;
+        if (!pending) { el.textContent = 'Module complete • no penalty'; return; }
+
         const due = new Date();
-        due.setHours(23,59,59,999);
-        due.setDate(due.getDate() + Math.max(0, dayNumber - new Date().getDate()));
+        due.setHours(23, 59, 59, 999);
         const ms = Math.max(0, due - new Date());
         const h = String(Math.floor(ms / 3600000)).padStart(2,'0');
         const m = String(Math.floor((ms % 3600000)/60000)).padStart(2,'0');
         const s = String(Math.floor((ms % 60000)/1000)).padStart(2,'0');
-        el.textContent = `Pending ${pending} task(s) • penalty starts in ${h}:${m}:${s}`;
+        el.textContent = `Pending ${pending} task(s) • penalty countdown ${h}:${m}:${s} (applies if module is incomplete at deadline)`;
       }
 
       renderRoadmap() {
