@@ -3075,22 +3075,27 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
 
       getDailyMissionTasks() {
         const active = this.getActiveRoadmapDay();
-        const learningTasks = [];
+        const learning = [];
 
         if (active) {
           const moduleDays = active.module.days;
           for (let i = 0; i <= active.dayIndex; i++) {
             const day = moduleDays[i];
-            const topic = (day.text || '').split('\n')[0].trim();
-            const progress = this.getTopicProgress(topic);
-            const done = progress.minutes >= progress.threshold;
-            learningTasks.push({ type: 'learning', topic, progress, done });
+            if (!day.completed) learning.push(day);
           }
+          if (!learning.length) learning.push(active.day);
         }
+
+        const learningTasks = learning.slice(0, 2).map(day => {
+          const topic = (day.text || '').split('\n')[0].trim();
+          const progress = this.getTopicProgress(topic);
+          const done = progress.minutes >= progress.threshold;
+          return { type: 'learning', topic, progress, done };
+        });
 
         const projectProgress = this.getTopicProgress('Project Work');
         const projectDone = projectProgress.minutes >= this.getThresholdForTopic('Project Work');
-        const allLearningDone = learningTasks.length > 0 ? learningTasks.every(t => t.done) : true;
+        const allLearningDone = (learningTasks.length > 0 ? learningTasks.every(t => t.done) : true) && projectDone;
         const revisionProgress = this.getTopicProgress('Revision');
         const revisionThreshold = this.getThresholdForTopic('Revision');
         const revisionDone = revisionProgress.minutes >= revisionThreshold;
@@ -3098,8 +3103,8 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         return [
           ...learningTasks,
           { type: 'project', topic: 'Project Work', progress: projectProgress, done: projectDone },
-          { type: 'revision', topic: 'Revision', progress: revisionProgress, done: revisionDone, active: allLearningDone && projectDone }
-        ];
+          { type: 'revision', topic: 'Revision', progress: revisionProgress, done: revisionDone, active: allLearningDone }
+        ].slice(0, 4);
       }
 
       startMissionTask(index) {
@@ -3124,6 +3129,47 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           missionType: item.type,
           sourceAgnostic: true
         });
+      }
+
+      startMissionTask(index) {
+        const tasks = this.getDailyMissionTasks();
+        const taskIds = ['mission-task-1', 'mission-task-2', 'mission-task-3', 'mission-task-4'];
+        const valueIds = ['goal-nptel', 'goal-yt', 'goal-project', 'goal-revision'];
+
+        taskIds.forEach((id, idx) => {
+          const labelEl = this.app.elements[id];
+          const valueEl = this.app.elements[valueIds[idx]];
+          const item = tasks[idx];
+          if (!labelEl || !valueEl || !item) return;
+
+          labelEl.textContent = `${idx + 1}. ${item.topic}`;
+          const threshold = item.progress?.threshold || this.getThresholdForTopic(item.topic);
+
+          if (item.type === 'revision' && !item.active) {
+            valueEl.textContent = 'Pending';
+            valueEl.classList.remove('shadow-goal-done');
+          } else {
+            valueEl.textContent = `${this.app.formatDuration(item.progress?.minutes || 0)} / ${this.app.formatDuration(threshold)}`;
+            valueEl.classList.toggle('shadow-goal-done', !!item.done);
+          }
+        });
+
+        document.querySelectorAll('.mission-start-btn').forEach(btn => {
+          const idx = Number(btn.getAttribute('data-mission-index') || -1);
+          const item = tasks[idx];
+          btn.disabled = !item || (item.type === 'revision' && !item.active);
+        });
+
+        const active = this.getActiveRoadmapDay();
+        if (active) {
+          const topic = (active.day.text || '').split('\n')[0].trim();
+          const progress = this.getTopicProgress(topic);
+          if (!active.day.completed && progress.minutes >= this.getThresholdForTopic(topic)) {
+            active.day.completed = true;
+            this.app.saveToStorage(CONFIG.STORAGE_KEYS.ROADMAP_STATE, this.state.roadmap);
+            this.normalizeRoadmapDays();
+          }
+        }
       }
 
       syncMissionFromRoadmap() {
@@ -3686,13 +3732,11 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         this.app.elements['sleep-btn'].addEventListener('click', () => this.app.stopwatch.startSleep());
         this.app.elements['add-favorite'].addEventListener('click', () => this.app.taskManager.addFavorite());
         this.app.elements['task-input'].addEventListener('keypress', e => { if (e.key === 'Enter' && !this.app.stopwatch.isRunning) this.app.stopwatch.start(); });
-        document.addEventListener('click', (e) => {
-          const btn = e.target.closest('.mission-start-btn');
-          if (!btn) return;
-          const idx = Number(btn.getAttribute('data-mission-index') || -1);
+        document.querySelectorAll('.mission-start-btn').forEach(btn => btn.addEventListener('click', (e) => {
+          const idx = Number(e.currentTarget.getAttribute('data-mission-index') || -1);
           if (idx < 0) return;
           this.app.trainerEngine.startMissionTask(idx);
-        });
+        }));
         this.app.elements['view-report'].addEventListener('click', () => this.app.uiManager.showReport());
         this.app.elements['open-trainer'].addEventListener('click', () => this.app.trainerEngine.showWindow());
         this.app.elements['export-data'].addEventListener('click', () => this.app.uiManager.exportData());
