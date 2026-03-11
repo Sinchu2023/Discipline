@@ -7,7 +7,7 @@
 - Tight coupling to DOM ids made testing and debugging difficult.
 
 ## 2) Improved Architecture
-- `index.html`: structure and mounting points only.
+- `Discipline.html`: primary app shell and mounting points.
 - `assets/css/app.css`: all styles.
 - `assets/js/app.js`: all runtime logic (behavior preserved).
 - Future phased migration:
