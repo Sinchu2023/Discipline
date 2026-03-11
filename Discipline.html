@@ -1133,10 +1133,10 @@
           <details class="shadow-mission-details">
             <summary>Daily Mission</summary>
             <div class="shadow-goal-list">
-              <div class="shadow-goal-item"><span id="mission-task-1">NPTEL (2h / 2 videos)</span><strong id="goal-nptel">0h 00m • 0/2</strong></div>
-              <div class="shadow-goal-item"><span id="mission-task-2">YouTube Learning (2h / 2 videos)</span><strong id="goal-yt">0h 00m • 0/2</strong></div>
-              <div class="shadow-goal-item"><span id="mission-task-3">Project Work (3h)</span><strong id="goal-project">0h 00m</strong></div>
-              <div class="shadow-goal-item"><span id="mission-task-4">Revision</span><strong id="goal-revision">Pending</strong></div>
+              <div class="shadow-goal-item"><span id="mission-task-1">1. Basic Semiconductor Physics</span><button class="btn btn-secondary mission-start-btn" data-mission-index="0" title="Start mission task">⭐</button><strong id="goal-nptel">0h 00m • 0/1</strong></div>
+              <div class="shadow-goal-item"><span id="mission-task-2">2. Different Models of Diodes</span><button class="btn btn-secondary mission-start-btn" data-mission-index="1" title="Start mission task">⭐</button><strong id="goal-yt">0h 00m • 0/1</strong></div>
+              <div class="shadow-goal-item"><span id="mission-task-3">3. Project Work</span><button class="btn btn-secondary mission-start-btn" data-mission-index="2" title="Start mission task">⭐</button><strong id="goal-project">0h 00m • 0/1</strong></div>
+              <div class="shadow-goal-item"><span id="mission-task-4">4. Revision</span><button class="btn btn-secondary mission-start-btn" data-mission-index="3" title="Start mission task">⭐</button><strong id="goal-revision">Pending</strong></div>
             </div>
             <div class="shadow-line">Mission Score: <strong id="shadow-mission-score">0/100</strong></div>
           </details>
@@ -1391,15 +1391,27 @@
     };
     
     const ANALOG_IC_ROADMAP_TEMPLATE = [
-      { module: 'MODULE 1 — DIODES', days: ['Basic Semiconductor Physics','Different Models of Diodes','Operating Point & Small Signal Analysis of Diode','Zener Diode as Voltage Regulator\nSeries Clipper Circuits','Shunt Clipper Circuits\nClamper Circuits'] },
-      { module: 'MODULE 2 — MOSFET FUNDAMENTALS', days: ['Introduction to MOS & Depletion MOSFETs','Enhancement MOSFETs','Important Concepts of MOS Physics','Introduction to MOSFETs\nSimple MOSFET Circuits'] },
-      { module: 'MODULE 3 — MOS BIASING', days: ['Biasing MOS\nTransconductance\nOutput Impedance','Biasing MOS for Amplification','Small Signal Model of MOS','MOSFET Current Mirrors'] },
-      { module: 'MODULE 4 — MOS AMPLIFIERS', days: ['Common Source Amplifier','Common Source Amplifier with Miller Theorem','Cascode Amplifiers'] },
-      { module: 'MODULE 5 — MOS PARASITICS', days: ['MOSFET Capacitances','Noise','Noise of Simple Circuits'] },
-      { module: 'MODULE 6 — DIFFERENTIAL PAIR', days: ['Systematic Mismatch','Random Mismatch','Differential Amplifiers\nDifferential Amplifier Offset'] },
-      { module: 'MODULE 7 — FEEDBACK', days: ['Types & Effects of Feedback','Amplifier Configurations','Negative Feedback','Stability of Negative Feedback Systems\nDominant Pole Compensation'] },
-      { module: 'MODULE 8 — OPAMP BASICS', days: ['Basics of OpAmp','Inverting & Non-Inverting Amplifier','Differential Amplifier using OpAmp\nActive Load'] }
+      { module: 'MODULE 1 — DIODES', days: ['Basic Semiconductor Physics', 'Different Models of Diodes', 'Operating Point & Small Signal Analysis of Diode', 'Zener Diode as Voltage Regulator', 'Series Clipper & Clamper Circuits'] },
+      { module: 'MODULE 2 — MOSFET FUNDAMENTALS', days: ['MOS Physics Fundamentals', 'MOS Devices: Depletion & Enhancement', 'Simple MOS Circuits', 'MOS Non-linear Circuit Concepts'] },
+      { module: 'MODULE 3 — MOS BIASING', days: ['Biasing MOS for Amplification', 'Small Signal Model of MOS', 'MOSFET Current Mirrors', 'Bias Stability Practice'] },
+      { module: 'MODULE 4 — MOS AMPLIFIERS', days: ['Common Source Amplifier', 'Miller Effect in Amplifiers', 'Cascode Amplifiers', 'Amplifier Gain Review'] },
+      { module: 'MODULE 5 — MOS PARASITICS', days: ['MOSFET Capacitances', 'Noise Fundamentals', 'Noise in Simple Circuits'] },
+      { module: 'MODULE 6 — DIFFERENTIAL PAIR', days: ['Mismatch: Systematic & Random', 'Differential Pair Fundamentals', 'Differential Offset Analysis'] },
+      { module: 'MODULE 7 — FEEDBACK', days: ['Types & Effects of Feedback', 'Negative Feedback Design', 'Stability & Dominant Pole Compensation'] },
+      { module: 'MODULE 8 — OPAMP BASICS', days: ['OpAmp Basics', 'OpAmp with Active Load', 'Differential Amplifier using OpAmp\nActive Load'] },
+      { module: 'MODULE 9 — TELESCOPIC OPAMP', days: ['Telescopic OpAmp Structure', 'Telescopic OpAmp Biasing', 'Telescopic OpAmp Gain Analysis', 'Telescopic OpAmp Limitations'] },
+      { module: 'MODULE 10 — FOLDED CASCODE OPAMP', days: ['Folded Cascode Concept', 'Folded Cascode Biasing', 'Folded Cascode Gain Analysis', 'Folded Cascode Advantages'] },
+      { module: 'MODULE 11 — TWO STAGE OPAMP', days: ['Two Stage OpAmp Architecture', 'Gain Distribution', 'Miller Compensation', 'Frequency Stability'] },
+      { module: 'MODULE 12 — ANALOG BLOCK PROJECTS', days: ['Common Source Amplifier Simulation', 'Current Mirror Design', 'Differential Pair Simulation', 'Cascode Amplifier Simulation', 'Two Stage OpAmp Simulation', 'Bandgap Reference Concept', 'LDO Regulator Concept'] }
     ];
+
+    const MISSION_THRESHOLDS = {
+      default: 30,
+      'basic semiconductor physics': 30,
+      'different models of diodes': 30,
+      'project work': 45,
+      'revision': 20
+    };
 const CATEGORY_DEFINITIONS = {
       'Sleep': ['Night Sleep', 'Nap', 'Recovery'],
       'Productive Work': ['Analog', 'PCB', 'Coding', 'Control Systems', 'Planning', 'Execution'],
@@ -1638,6 +1650,9 @@ const CATEGORY_DEFINITIONS = {
           confidence,
           waste_level: wasteLevel,
           graph_tag: graphTag,
+          missionTopic: task.missionTopic || task.topic || '',
+          missionType: task.missionType || '',
+          sourceAgnostic: !!task.sourceAgnostic,
           classification_json: {
             activity: task.description || task.name || '',
             category: growthCategory,
@@ -2960,28 +2975,62 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
       }
 
       getRoadmapState() {
-        const stored = this.app.loadFromStorage(CONFIG.STORAGE_KEYS.ROADMAP_STATE);
-        if (stored?.modules?.length) return stored;
-        return {
-          modules: ANALOG_IC_ROADMAP_TEMPLATE.map((m, mi) => ({
+        const createFromTemplate = () => ({
+          modules: ANALOG_IC_ROADMAP_TEMPLATE.map(m => ({
             name: m.module,
-            days: m.days.map((task, di) => ({ day: `Day ${mi === 0 ? di + 1 : 0}`, text: task, completed: false }))
+            days: m.days.map(task => ({ day: '', text: task, completed: false }))
           })),
           editMode: false,
           startedAt: Date.now()
-        };
+        });
+
+        const stored = this.app.loadFromStorage(CONFIG.STORAGE_KEYS.ROADMAP_STATE);
+        if (!stored?.modules?.length) return createFromTemplate();
+
+        const allCompleted = stored.modules.every(mod => mod.days?.length && mod.days.every(day => day.completed));
+        if (allCompleted) return createFromTemplate();
+
+        const merged = createFromTemplate();
+        merged.editMode = !!stored.editMode;
+        merged.startedAt = stored.startedAt || merged.startedAt;
+        merged.modules.forEach((module, mi) => {
+          const fromStored = stored.modules[mi];
+          if (!fromStored) return;
+          module.name = fromStored.name || module.name;
+          module.days.forEach((day, di) => {
+            const storedDay = fromStored.days?.[di];
+            if (!storedDay) return;
+            day.text = storedDay.text || day.text;
+            day.completed = !!storedDay.completed;
+          });
+        });
+        return merged;
       }
 
       normalizeRoadmapDays() {
         let counter = 1;
         this.state.roadmap.modules.forEach(mod => {
-          mod.days.forEach(day => { day.day = `Day ${counter++}`; });
+          mod.days.forEach(day => {
+            day.day = `Day ${counter++}`;
+            if (day.day === 'Day 29' && typeof day.text === 'string' && day.text.includes('Differential Amplifier using OpAmp')) {
+              day.text = 'Differential Amplifier using OpAmp\nActive Load';
+            }
+          });
         });
       }
 
       ensureRoadmap() {
         if (!this.state.roadmap) this.state.roadmap = this.getRoadmapState();
         this.normalizeRoadmapDays();
+      }
+
+      normalizeTopic(text = '') {
+        return text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+      }
+
+      getThresholdForTopic(topic = '') {
+        const key = this.normalizeTopic(topic);
+        return MISSION_THRESHOLDS[key] || MISSION_THRESHOLDS.default;
       }
 
       getRoadmapProgress() {
@@ -2996,20 +3045,118 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         return { moduleIndex, activeModule };
       }
 
+      getActiveRoadmapDay() {
+        const { moduleIndex } = this.getRoadmapProgress();
+        const module = this.state.roadmap.modules[moduleIndex];
+        if (!module) return null;
+        const dayIndex = module.days.findIndex(d => !d.completed);
+        if (dayIndex < 0) return null;
+        return { moduleIndex, dayIndex, day: module.days[dayIndex], module };
+      }
+
+      getTopicProgress(topic, dateStr = this.app.getDateString(new Date())) {
+        const normalizedTopic = this.normalizeTopic(topic);
+        const topicWords = normalizedTopic.split(' ').filter(w => w.length > 3);
+        let minutes = 0;
+        let sessions = 0;
+
+        this.app.state.tasks.forEach(task => {
+          if (!task || task.date !== dateStr || !this.app.isProductiveCategory(task.category)) return;
+          const taskTopic = this.normalizeTopic(task.missionTopic || task.topic || '');
+          const haystack = this.normalizeTopic(`${task.description || ''} ${task.subcategory || ''} ${task.category || ''}`);
+          const matchesTopic = taskTopic === normalizedTopic || topicWords.some(w => haystack.includes(w));
+          if (!matchesTopic) return;
+          minutes += Number(task.duration || 0);
+          sessions += 1;
+        });
+
+        return { minutes, sessions, threshold: this.getThresholdForTopic(topic) };
+      }
+
       getDailyMissionTasks() {
-        const { activeModule } = this.getRoadmapProgress();
-        if (!activeModule) return ['Project Work', 'Revision'];
-        const tasks = activeModule.days.filter(d => !d.completed).map(d => d.text.split('\n')[0]);
-        return [...tasks.slice(0, 2), 'Project Work', 'Revision'];
+        const active = this.getActiveRoadmapDay();
+        const learningTasks = [];
+
+        if (active) {
+          const moduleDays = active.module.days;
+          for (let i = 0; i <= active.dayIndex; i++) {
+            const day = moduleDays[i];
+            const topic = (day.text || '').split('\n')[0].trim();
+            const progress = this.getTopicProgress(topic);
+            const done = progress.minutes >= progress.threshold;
+            learningTasks.push({ type: 'learning', topic, progress, done });
+          }
+        }
+
+        const projectProgress = this.getTopicProgress('Project Work');
+        const projectDone = projectProgress.minutes >= this.getThresholdForTopic('Project Work');
+        const allLearningDone = learningTasks.length > 0 ? learningTasks.every(t => t.done) : true;
+        const revisionProgress = this.getTopicProgress('Revision');
+        const revisionThreshold = this.getThresholdForTopic('Revision');
+        const revisionDone = revisionProgress.minutes >= revisionThreshold;
+
+        return [
+          ...learningTasks,
+          { type: 'project', topic: 'Project Work', progress: projectProgress, done: projectDone },
+          { type: 'revision', topic: 'Revision', progress: revisionProgress, done: revisionDone, active: allLearningDone && projectDone }
+        ];
+      }
+
+      startMissionTask(index) {
+        const tasks = this.getDailyMissionTasks();
+        const item = tasks[index];
+        if (!item || !item.topic) return;
+        if (item.type === 'revision' && !item.active) {
+          alert('Revision unlocks after all learning tasks are completed.');
+          return;
+        }
+        if (this.app.stopwatch.isRunning) {
+          alert('A task is already running. Stop it first.');
+          return;
+        }
+
+        this.app.elements['task-input'].value = item.topic;
+        this.app.stopwatch.start(item.topic, {
+          category: 'Productive Work',
+          subcategory: 'Analog',
+          description: `Topic: ${item.topic}`,
+          missionTopic: item.topic,
+          missionType: item.type,
+          sourceAgnostic: true
+        });
       }
 
       syncMissionFromRoadmap() {
         const tasks = this.getDailyMissionTasks();
-        const ids = ['mission-task-1', 'mission-task-2', 'mission-task-3', 'mission-task-4'];
-        ids.forEach((id, idx) => {
-          const el = this.app.elements[id];
-          if (el) el.textContent = `${idx + 1}. ${tasks[idx] || '-'}`;
-        });
+        const container = document.querySelector('.shadow-goal-list');
+        if (!container) return;
+
+        const taskIds = ['mission-task-1', 'mission-task-2', 'mission-task-3', 'mission-task-4'];
+        const valueIds = ['goal-nptel', 'goal-yt', 'goal-project', 'goal-revision'];
+
+        container.innerHTML = tasks.map((item, idx) => {
+          const threshold = item.progress?.threshold || this.getThresholdForTopic(item.topic);
+          const done = !!item.done;
+          const disabled = item.type === 'revision' && !item.active;
+          const valueText = disabled
+            ? 'Pending'
+            : `${this.app.formatDuration(item.progress?.minutes || 0)} / ${this.app.formatDuration(threshold)}`;
+          const labelId = idx < 4 ? ` id="${taskIds[idx]}"` : '';
+          const valueId = idx < 4 ? ` id="${valueIds[idx]}"` : '';
+          const doneCls = done ? ' shadow-goal-done' : '';
+          return `<div class="shadow-goal-item"><span${labelId}>${idx + 1}. ${this.escapeHtml(item.topic)}</span><button class="btn btn-secondary mission-start-btn" data-mission-index="${idx}" ${disabled ? 'disabled' : ''} title="Start mission task">⭐</button><strong${valueId} class="${doneCls.trim()}">${this.escapeHtml(valueText)}</strong></div>`;
+        }).join('');
+
+        const active = this.getActiveRoadmapDay();
+        if (active) {
+          const topic = (active.day.text || '').split('\n')[0].trim();
+          const progress = this.getTopicProgress(topic);
+          if (!active.day.completed && progress.minutes >= this.getThresholdForTopic(topic)) {
+            active.day.completed = true;
+            this.app.saveToStorage(CONFIG.STORAGE_KEYS.ROADMAP_STATE, this.state.roadmap);
+            this.normalizeRoadmapDays();
+          }
+        }
       }
 
       updatePenaltyTimer() {
@@ -3018,16 +3165,15 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         const { activeModule } = this.getRoadmapProgress();
         if (!activeModule) { el.textContent = 'No active penalty'; return; }
         const pending = activeModule.days.filter(d => !d.completed).length;
-        if (!pending) { el.textContent = 'Module complete'; return; }
-        const dayNumber = Number((activeModule.days[activeModule.days.length - 1]?.day || '').replace('Day ', '')) || 1;
+        if (!pending) { el.textContent = 'Module complete • no penalty'; return; }
+
         const due = new Date();
-        due.setHours(23,59,59,999);
-        due.setDate(due.getDate() + Math.max(0, dayNumber - new Date().getDate()));
+        due.setHours(23, 59, 59, 999);
         const ms = Math.max(0, due - new Date());
         const h = String(Math.floor(ms / 3600000)).padStart(2,'0');
         const m = String(Math.floor((ms % 3600000)/60000)).padStart(2,'0');
         const s = String(Math.floor((ms % 60000)/1000)).padStart(2,'0');
-        el.textContent = `Pending ${pending} task(s) • penalty starts in ${h}:${m}:${s}`;
+        el.textContent = `Pending ${pending} task(s) • penalty countdown ${h}:${m}:${s} (applies if module is incomplete at deadline)`;
       }
 
       renderRoadmap() {
@@ -3051,12 +3197,15 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           const moduleTitle = this.state.roadmap.editMode ? `<input class="roadmap-module-edit" data-module="${mi}" value="${this.escapeHtml(mod.name)}"/>` : this.escapeHtml(mod.name);
           html += `<section class="trainer-section"><div class="trainer-section-title">${moduleTitle} ${done ? '✔' : ''}</div>`;
           mod.days.forEach((day, di) => {
-            const disabled = (!unlocked || (di > 0 && !mod.days[di - 1].completed)) ? 'disabled' : '';
+            const dayUnlocked = unlocked && (di === 0 || mod.days[di - 1].completed);
+            const disabled = dayUnlocked ? '' : 'disabled';
             const checked = day.completed ? 'checked' : '';
+            const stateIcon = day.completed ? '✔' : (dayUnlocked ? '●' : '🔒');
+            const stateLabel = day.completed ? 'Completed' : (dayUnlocked ? 'Active' : 'Locked');
             if (this.state.roadmap.editMode) {
-              html += `<div class="trainer-row"><div class="trainer-key">${day.day}</div><div class="trainer-val"><textarea data-module="${mi}" data-day="${di}" class="roadmap-edit">${this.escapeHtml(day.text)}</textarea></div><label><input type="checkbox" data-module="${mi}" data-day="${di}" class="roadmap-check" ${checked} ${disabled}/> Done</label></div>`;
+              html += `<div class="trainer-row"><div class="trainer-key">${day.day} ${stateIcon}</div><div class="trainer-val"><textarea data-module="${mi}" data-day="${di}" class="roadmap-edit">${this.escapeHtml(day.text)}</textarea></div><label><input type="checkbox" data-module="${mi}" data-day="${di}" class="roadmap-check" ${checked} ${disabled}/> ${stateLabel}</label></div>`;
             } else {
-              html += `<div class="trainer-row"><div class="trainer-key">${day.day}</div><div class="trainer-val">${this.escapeHtml(day.text)}</div><label><input type="checkbox" data-module="${mi}" data-day="${di}" class="roadmap-check" ${checked} ${disabled}/> Done</label></div>`;
+              html += `<div class="trainer-row"><div class="trainer-key">${day.day} ${stateIcon}</div><div class="trainer-val">${this.escapeHtml(day.text)}</div><label><input type="checkbox" data-module="${mi}" data-day="${di}" class="roadmap-check" ${checked} ${disabled}/> ${stateLabel}</label></div>`;
             }
           });
           html += `</section>`;
@@ -3367,32 +3516,14 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         return true;
       }
 
-      getColorScheme(filter) {
+      getColorScheme() {
         return { border: 'rgb(40, 180, 99)', fill: 'rgba(40, 180, 99, 0.16)' };
       }
 
       createCharts() {
         const prodCtx = this.app.elements['productivity-chart'].getContext('2d');
         const initialRange = this.app.elements['prod-range']?.value || '7d';
-                const crosshairPlugin = {
-          id: 'crosshairPlugin',
-          afterDatasetsDraw: (chart) => {
-            const active = chart.tooltip?.getActiveElements?.() || [];
-            if (!active.length) return;
-            const { ctx, chartArea: { top, bottom, left, right } } = chart;
-            const x = active[0].element.x;
-            const y = active[0].element.y;
-            ctx.save();
-            ctx.strokeStyle = 'rgba(0,194,255,0.55)';
-            ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(right, y); ctx.stroke();
-            ctx.restore();
-          }
-        };
-
-this.charts.productivity = new Chart(prodCtx, {
-          plugins: [crosshairPlugin],
+        this.charts.productivity = new Chart(prodCtx, {
           type: 'line',
           data: this.getProductivityData(initialRange, this.getCurrentFilter()),
           options: {
@@ -3403,32 +3534,23 @@ this.charts.productivity = new Chart(prodCtx, {
               active: { animation: { duration: 320 } },
               resize: { animation: { duration: 320 } }
             },
-            plugins: { legend: { display: false }, tooltip: {
-              mode: 'nearest',
-              intersect: false,
-              callbacks: {
-                label: (ctx) => {
-                  const chart = ctx.chart;
-                  const i = ctx.dataIndex;
-                  const p = chart.data.datasets[0]?.data?.[i] || 0;
-                  const shadow = chart.data.datasets[1]?.data?.[i] || 0;
-                  const weekly = chart.data.datasets[2]?.data?.[i] || 0;
-                  const delta = (p - shadow).toFixed(2);
-                  return [
-                    `Productivity: ${p.toFixed(2)}h`,
-                    `Shadow Standard: ${Number(shadow).toFixed(2)}h`,
-                    `Delta vs Shadow: ${delta}h`,
-                    `Weekly Average: ${Number(weekly).toFixed(2)}h`
-                  ];
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                displayColors: false,
+                mode: 'nearest',
+                intersect: false,
+                callbacks: {
+                  label: (ctx) => `Productivity: ${Number(ctx.parsed.y || 0).toFixed(2)}h`
                 }
               }
-            } },
+            },
             scales: { y: { beginAtZero: true, ticks: { callback: v => v + 'h' } } },
             interaction: { mode: 'nearest', intersect: false, axis: 'x' },
             elements: {
               point: {
-                radius: 2,
-                hoverRadius: 6,
+                radius: 0,
+                hoverRadius: 0,
                 pointStyle: 'circle',
                 hoverBorderWidth: 2
               },
@@ -3445,32 +3567,14 @@ this.charts.productivity = new Chart(prodCtx, {
             responsive: true,
             maintainAspectRatio: false,
             animation: { duration: 380, easing: 'easeOutQuad' },
-            plugins: { legend: { display: false }, tooltip: {
-              mode: 'nearest',
-              intersect: false,
-              callbacks: {
-                label: (ctx) => {
-                  const chart = ctx.chart;
-                  const i = ctx.dataIndex;
-                  const p = chart.data.datasets[0]?.data?.[i] || 0;
-                  const shadow = chart.data.datasets[1]?.data?.[i] || 0;
-                  const weekly = chart.data.datasets[2]?.data?.[i] || 0;
-                  const delta = (p - shadow).toFixed(2);
-                  return [
-                    `Productivity: ${p.toFixed(2)}h`,
-                    `Shadow Standard: ${Number(shadow).toFixed(2)}h`,
-                    `Delta vs Shadow: ${delta}h`,
-                    `Weekly Average: ${Number(weekly).toFixed(2)}h`
-                  ];
-                }
-              }
-            } },
+            plugins: { legend: { display: false } },
             scales: { y: { beginAtZero: true, max: 12, ticks: { callback: v => v + 'h' } } }
           }
         });
       }
 
-      getProductivityData(range='7d', filter='all') {
+      getProductivityData(range='7d', filter='productivity') {
+        const activeFilter = 'productivity';
         const data = [];
         const labels = [];
         const today = new Date();
@@ -3486,65 +3590,33 @@ this.charts.productivity = new Chart(prodCtx, {
               const wd = new Date(d);
               wd.setDate(d.getDate() - w);
               const wds = this.app.getDateString(wd);
-              if (filter === 'total_distraction') {
-                const logged = this.app.state.tasks.filter(t => t.date===wds && this.passesProductivityFilter(t, 'logged_distraction')).reduce((a,t)=>a+t.duration,0);
-                weekMinutes += logged + this.app.getInferredWasteMinutesForDate(wds, this.app.state.tasks);
-              } else {
-                weekMinutes += this.app.state.tasks.filter(t => t.date===wds && this.passesProductivityFilter(t, filter)).reduce((a,t)=>a+t.duration,0);
-              }
+              weekMinutes += this.app.state.tasks.filter(t => t.date===wds && this.passesProductivityFilter(t, activeFilter)).reduce((a,t)=>a+t.duration,0);
             }
             mins = weekMinutes / 7;
-          } else if (filter === 'total_distraction') {
-            const logged = this.app.state.tasks.filter(t => t.date===ds && this.passesProductivityFilter(t, 'logged_distraction')).reduce((a,t)=>a+t.duration,0);
-            mins = logged + this.app.getInferredWasteMinutesForDate(ds, this.app.state.tasks);
           } else {
-            mins = this.app.state.tasks.filter(t => t.date===ds && this.passesProductivityFilter(t, filter)).reduce((a,t)=>a+t.duration,0);
+            mins = this.app.state.tasks.filter(t => t.date===ds && this.passesProductivityFilter(t, activeFilter)).reduce((a,t)=>a+t.duration,0);
           }
-          labels.push(range === 'weekly' ? d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) : d.toLocaleDateString('en-US',{month:'short',day:'numeric'}));
+          labels.push(d.toLocaleDateString('en-US',{month:'short',day:'numeric'}));
           data.push(parseFloat((mins/60).toFixed(2)));
         }
 
-        const colors = this.getColorScheme(filter);
-        const weeklyAvg = parseFloat((data.reduce((a,b)=>a+b,0) / Math.max(1, data.length)).toFixed(2));
-        const shadowStandard = parseFloat(((this.app.shadowEngine?.shadowSevenDayAverage || 0) / 60).toFixed(2));
-
-        const datasets = [{
-          label:'Productivity',
-          data,
-          borderColor: colors.border,
-          backgroundColor: colors.fill,
-          pointBackgroundColor: (ctx) => ctx.dataIndex === data.length - 1 ? '#00c2ff' : colors.border,
-          pointRadius: (ctx) => ctx.dataIndex === data.length - 1 ? 5 : 2,
-          pointHoverRadius: 6,
-          pointBorderColor: '#ffffff',
-          borderWidth: 2.5,
-          tension: 0.34,
-          fill: true
-        }];
-
-        if (filter === 'productivity') {
-          datasets.push({
-            label:'Shadow Standard',
-            data: labels.map(() => shadowStandard),
-            borderColor: 'rgba(255, 193, 7, 0.9)',
-            borderDash: [7, 5],
-            borderWidth: 2,
+        const colors = this.getColorScheme();
+        return {
+          labels,
+          datasets: [{
+            label:'Productivity',
+            data,
+            borderColor: colors.border,
+            backgroundColor: colors.fill,
+            pointBackgroundColor: colors.border,
             pointRadius: 0,
-            fill: false,
-            tension: 0
-          });
-          datasets.push({
-            label:'Weekly Average',
-            data: labels.map(() => weeklyAvg),
-            borderColor: 'rgba(0, 194, 255, 0.9)',
-            borderWidth: 2,
-            pointRadius: 0,
-            fill: false,
-            tension: 0
-          });
-        }
-
-        return { labels, datasets };
+            pointHoverRadius: 0,
+            pointBorderColor: colors.border,
+            borderWidth: 2.5,
+            tension: 0.34,
+            fill: true
+          }]
+        };
       }
 
       getSleepData(range='7d') {
@@ -3554,19 +3626,11 @@ this.charts.productivity = new Chart(prodCtx, {
       }
 
       getCurrentFilteredTotalMinutes() {
-        const filter = this.getCurrentFilter();
         const range = this.app.elements['prod-range'].value;
         const rangeDates = this.getRangeDates(range);
         const dateSet = new Set(rangeDates);
-        if (filter === 'total_distraction') {
-          const logged = this.app.state.tasks
-            .filter(t => dateSet.has(t.date) && this.passesProductivityFilter(t, 'logged_distraction'))
-            .reduce((sum, t) => sum + t.duration, 0);
-          const inferred = rangeDates.reduce((sum, dateStr) => sum + this.app.getInferredWasteMinutesForDate(dateStr, this.app.state.tasks), 0);
-          return logged + inferred;
-        }
         return this.app.state.tasks
-          .filter(t => dateSet.has(t.date) && this.passesProductivityFilter(t, filter))
+          .filter(t => dateSet.has(t.date) && this.passesProductivityFilter(t, 'productivity'))
           .reduce((sum, t) => sum + t.duration, 0);
       }
 
@@ -3610,7 +3674,6 @@ this.charts.productivity = new Chart(prodCtx, {
 
       setupChartControls() {
         this.app.elements['prod-range'].addEventListener('change', () => this.updateCharts());
-        this.app.elements['prod-filter'].addEventListener('change', () => this.updateCharts());
         this.app.elements['sleep-range'].addEventListener('change', () => this.updateCharts());
       }
     }
@@ -3623,6 +3686,13 @@ this.charts.productivity = new Chart(prodCtx, {
         this.app.elements['sleep-btn'].addEventListener('click', () => this.app.stopwatch.startSleep());
         this.app.elements['add-favorite'].addEventListener('click', () => this.app.taskManager.addFavorite());
         this.app.elements['task-input'].addEventListener('keypress', e => { if (e.key === 'Enter' && !this.app.stopwatch.isRunning) this.app.stopwatch.start(); });
+        document.addEventListener('click', (e) => {
+          const btn = e.target.closest('.mission-start-btn');
+          if (!btn) return;
+          const idx = Number(btn.getAttribute('data-mission-index') || -1);
+          if (idx < 0) return;
+          this.app.trainerEngine.startMissionTask(idx);
+        });
         this.app.elements['view-report'].addEventListener('click', () => this.app.uiManager.showReport());
         this.app.elements['open-trainer'].addEventListener('click', () => this.app.trainerEngine.showWindow());
         this.app.elements['export-data'].addEventListener('click', () => this.app.uiManager.exportData());
