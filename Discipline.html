@@ -1021,6 +1021,27 @@
         text-align: center;
       }
     }
+
+    .shadow-mission-details {
+      margin-top: 0.9rem;
+    }
+    .shadow-mission-details > summary {
+      cursor: pointer;
+      font-weight: 700;
+      margin-bottom: 0.65rem;
+    }
+    .advanced-shadow-panel {
+      margin-top: 0.9rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.65rem 0.75rem;
+      background: rgba(0, 0, 0, 0.2);
+    }
+    .advanced-shadow-panel > summary {
+      cursor: pointer;
+      font-weight: 700;
+      margin-bottom: 0.55rem;
+    }
   </style>
 </head>
 <body>
@@ -1049,7 +1070,7 @@
       </h1>
       <div class="view-controls">
         <button class="btn" id="open-trainer">
-          <i class="fas fa-chess-knight"></i> Trainer
+          <i class="fas fa-road"></i> Roadmap
         </button>
         <button class="btn btn-primary" id="view-report">
           <i class="fas fa-chart-bar"></i> Report
@@ -1095,25 +1116,12 @@
         <div class="shadow-card" id="shadow-current-card">
           <div class="shadow-card-title">⚔ Current You</div>
           <div class="shadow-verdict" id="shadow-verdict">Verdict loading...</div>
-          <div class="shadow-subtitle">Today Battle</div>
           <div class="shadow-main-value" id="shadow-current-minutes">0h 00m</div>
           <div class="shadow-line">Gap vs Shadow: <strong id="shadow-gap" class="shadow-gap-equal">0h 00m</strong></div>
           <div class="shadow-line">Need to tie today: <strong id="shadow-needed-tie">0h 00m</strong></div>
           <div class="shadow-line">Need to lead today: <strong id="shadow-needed-lead">0h 00m</strong></div>
-          <div class="shadow-line">Shadow Defense Target (tomorrow): <strong id="shadow-defense-target">0h 00m</strong></div>
           <div class="shadow-line">Reached: <strong id="shadow-percent">0%</strong></div>
-          <div class="shadow-line">Penalty: <strong id="shadow-penalty" class="shadow-gap-positive">-0h 00m</strong></div>
-          <div class="shadow-line">Penalty Reason: <strong id="shadow-penalty-reason">No active penalty triggers</strong></div>
-          <div class="shadow-line">Penalty Expiry: <strong id="shadow-penalty-expiry">No active penalty</strong></div>
-          <div class="shadow-line">Distraction Budget: <strong id="shadow-distraction-budget">0h 00m / 1h 30m</strong></div>
-          <div class="shadow-line">Win Ladder: <strong id="shadow-win-ladder">3/5: 0/3 • 5/7: 0/5</strong></div>
-          <div class="shadow-subtitle">Daily Mission</div>
-          <div class="shadow-goal-list">
-            <div class="shadow-goal-item"><span>NPTEL (2h / 2 videos)</span><strong id="goal-nptel">0m • 0/2</strong></div>
-            <div class="shadow-goal-item"><span>YouTube Learning (2h / 2 videos)</span><strong id="goal-yt">0m • 0/2</strong></div>
-            <div class="shadow-goal-item"><span>Project Work (3h)</span><strong id="goal-project">0m</strong></div>
-          </div>
-          <div class="shadow-line">Mission Score: <strong id="shadow-mission-score">0/100</strong></div>
+          <div class="shadow-line">Shadow Defense Target (tomorrow): <strong id="shadow-defense-target">0h 00m</strong></div>
           <div>
             <span class="shadow-badge" id="shadow-status">OUT OF RANGE</span>
             <span class="shadow-badge" id="shadow-pressure">Pressure: High</span>
@@ -1121,11 +1129,29 @@
           <div class="shadow-progress">
             <div class="shadow-progress-fill" id="shadow-progress-fill"></div>
           </div>
+
+          <details class="shadow-mission-details">
+            <summary>Daily Mission</summary>
+            <div class="shadow-goal-list">
+              <div class="shadow-goal-item"><span id="mission-task-1">1. Basic Semiconductor Physics</span><strong id="goal-nptel">0h 00m • 0/2</strong></div>
+              <div class="shadow-goal-item"><span id="mission-task-2">2. Different Models of Diodes</span><strong id="goal-yt">0h 00m • 0/2</strong></div>
+              <div class="shadow-goal-item"><span id="mission-task-3">Project Work (3h)</span><strong id="goal-project">0h 00m</strong></div>
+              <div class="shadow-goal-item"><span id="mission-task-4">Revision</span><strong id="goal-revision">Pending</strong></div>
+            </div>
+            <div class="shadow-line">Mission Score: <strong id="shadow-mission-score">0/100</strong></div>
+          </details>
         </div>
         <div class="shadow-card" id="shadow-standard-card">
           <div class="shadow-card-title">🌑 The Shadow</div>
           <div class="shadow-main-value" id="shadow-average">0h 00m</div>
-          <div class="shadow-subtitle">Monthly Battle</div>
+          <div class="shadow-line">Weekly 7-Day Avg: <strong id="shadow-weekly-average">0h 00m</strong></div>
+          <div class="shadow-line">Shadow Standard: <strong id="shadow-standard-metric">0h 00m</strong></div>
+          <div class="shadow-line">Momentum Score: <strong id="shadow-momentum-score">0.00x</strong></div>
+          <div class="shadow-line">Consistency Index: <strong id="shadow-consistency-index">0/7</strong></div>
+          <div class="shadow-line">Growth Trend: <strong id="shadow-growth-trend">STABLE</strong></div>
+          <div class="shadow-line">Momentum: <strong id="shadow-momentum" class="shadow-momentum-flat">Stable</strong></div>
+          <div class="shadow-line">Weekly Delta vs Shadow: <strong id="shadow-weekly-gap" class="shadow-gap-equal">0h 00m</strong></div>
+          <div class="shadow-line">Today's Target: <strong id="shadow-target">0h 00m</strong></div>
           <div>
             <span class="shadow-badge" id="shadow-rank">Rank: Initiate</span>
             <span class="shadow-badge" id="shadow-badge">Baseline</span>
@@ -1136,65 +1162,26 @@
             <span class="shadow-badge" id="shadow-lead-margin">Lead Margin: 0</span>
             <span class="shadow-badge" id="shadow-trend">Monthly trend: 0%</span>
           </div>
-          <div class="shadow-line">Weekly 7-Day Avg: <strong id="shadow-weekly-average">0h 00m</strong></div>
-          <div class="shadow-line">Momentum: <strong id="shadow-momentum" class="shadow-momentum-flat">Stable</strong></div>
-          <div class="shadow-line">Weekly Delta vs Shadow: <strong id="shadow-weekly-gap" class="shadow-gap-equal">0h 00m</strong></div>
-          <div class="shadow-line">Today's Target: <strong id="shadow-target">0h 00m</strong></div>
           <div class="shadow-duel-bar">
             <div class="shadow-duel-you"><div class="shadow-duel-you-fill" id="shadow-duel-you-fill"></div></div>
             <div class="shadow-duel-shadow"><div class="shadow-duel-shadow-fill" id="shadow-duel-shadow-fill"></div></div>
           </div>
           <div class="shadow-line">Your Strongest Historical 7-Day Standard</div>
           <div class="shadow-line" id="shadow-note">Calculated from real historical data only</div>
-        </div>
-      </div>
-    </section>
 
-    <section class="flow-lab-section">
-      <h3 class="flow-lab-title"><i class="fas fa-brain"></i> FLOW PROTOCOL LAB</h3>
-      <div class="flow-lab-grid">
-        <div class="flow-card">
-          <h4>Four Pillars Status</h4>
-          <div class="flow-row"><span>Flow Blockers</span><strong id="flow-blockers-status">-</strong></div>
-          <div class="flow-row"><span>Flow Proneness</span><strong id="flow-proneness-status">-</strong></div>
-          <div class="flow-row"><span>Flow Triggers</span><strong id="flow-triggers-status">-</strong></div>
-          <div class="flow-row"><span>Flow Cycle</span><strong id="flow-cycle-status">-</strong></div>
-          <div class="flow-actions">
-            <button class="btn" id="wake-now-btn"><i class="fas fa-sun"></i> Wake Now</button>
-            <button class="btn" id="first-action-btn"><i class="fas fa-bolt"></i> First Action</button>
-            <button class="btn btn-success" id="kill-switch-btn"><i class="fas fa-play"></i> 3-2-1 Kill Switch</button>
-          </div>
-          <div id="kill-switch-countdown">Ready</div>
-          <div class="flow-steps">
-            <div class="flow-steps-title">Today's Execution Steps</div>
-            <ol class="flow-steps-list" id="flow-action-steps"></ol>
-          </div>
-        </div>
-
-        <div class="flow-card">
-          <h4>Flow Before Phone</h4>
-          <div class="flow-checklist">
-            <label><input type="checkbox" id="flow-before-phone-check" /> Completed 2-3h priority work before phone</label>
-          </div>
-          <div class="flow-row"><span>Attention Stretch</span><strong id="attention-stretch-value">0 min</strong></div>
-          <div class="flow-actions">
-            <button class="btn" id="attention-minus-btn"><i class="fas fa-minus"></i> -1 min stretch</button>
-            <button class="btn" id="attention-plus-btn"><i class="fas fa-plus"></i> +1 min stretch</button>
-          </div>
-          <small style="color:var(--text-secondary);">Target: extend focused effort daily to build persistence through struggle phase.</small>
-        </div>
-
-        <div class="flow-card">
-          <h4>Daily War Mode</h4>
-          <div class="flow-checklist">
-            <label><input type="checkbox" class="war-mode-check" data-key="cold_shower" /> Cold shower</label>
-            <label><input type="checkbox" class="war-mode-check" data-key="pushups" /> 100 push-ups</label>
-            <label><input type="checkbox" class="war-mode-check" data-key="deep_work_30" /> 30 min deep work</label>
-            <label><input type="checkbox" class="war-mode-check" data-key="speak_up" /> Speak up despite fear</label>
-            <label><input type="checkbox" class="war-mode-check" data-key="wake_before_sun" /> Wake before sunrise</label>
-          </div>
-          <div class="flow-row"><span>War Score</span><strong id="war-score">0/5</strong></div>
-          <small style="color:var(--text-secondary);">Daily discomfort ritual trains action before emotion.</small>
+          <details class="advanced-shadow-panel">
+            <summary>Advanced Shadow Analysis</summary>
+            <div class="shadow-line">Penalty: <strong id="shadow-penalty" class="shadow-gap-positive">-0h 00m</strong></div>
+            <div class="shadow-line">Penalty Reason: <strong id="shadow-penalty-reason">No active penalty triggers</strong></div>
+            <div class="shadow-line">Penalty Expiry: <strong id="shadow-penalty-expiry">No active penalty</strong></div>
+            <div class="shadow-line">Distraction Budget: <strong id="shadow-distraction-budget">0h 00m / 1h 30m</strong></div>
+            <div class="shadow-line">Win Ladder: <strong id="shadow-win-ladder">3/5: 0/3 • 5/7: 0/5</strong></div>
+            <div class="shadow-line">Roadmap Penalty Timer: <strong id="roadmap-penalty-timer">No active penalty</strong></div>
+            <div class="flow-row"><span>Flow Blockers</span><strong id="flow-blockers-status">-</strong></div>
+            <div class="flow-row"><span>Flow Proneness</span><strong id="flow-proneness-status">-</strong></div>
+            <div class="flow-row"><span>Flow Triggers</span><strong id="flow-triggers-status">-</strong></div>
+            <div class="flow-row"><span>Flow Cycle</span><strong id="flow-cycle-status">-</strong></div>
+          </details>
         </div>
       </div>
     </section>
@@ -1324,20 +1311,20 @@
   <div class="modal-overlay" id="trainer-modal">
     <div class="modal">
       <div class="modal-header">
-        <h2 class="modal-title">Shadow Trainer Window</h2>
+        <h2 class="modal-title">Analog IC Roadmap</h2>
         <button class="btn" id="close-trainer-modal" style="position: absolute; right: 20px; top: 20px;">
           <i class="fas fa-times"></i>
         </button>
         <div class="trainer-meta">
-          <span class="trainer-pill">Tactical Only</span>
-          <span class="trainer-pill">No Simulated Data</span>
-          <span class="trainer-pill">Command Mode</span>
+          <span class="trainer-pill">Module Progress</span>
+          <span class="trainer-pill">Editable</span>
+          <span class="trainer-pill">Shadow Synced</span>
         </div>
       </div>
       <div class="modal-content">
         <div class="trainer-terminal">
           <div class="trainer-terminal-head">
-            <span>Trainer Console</span>
+            <span>Roadmap Console</span>
             <div class="trainer-dots"><span></span><span></span><span></span></div>
           </div>
           <div class="trainer-overview" id="trainer-overview"></div>
@@ -1345,8 +1332,8 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn" id="refresh-trainer"><i class="fas fa-rotate-right"></i> Refresh</button>
-        <button class="btn" id="copy-trainer"><i class="fas fa-copy"></i> Copy Plan</button>
+        <button class="btn" id="refresh-trainer"><i class="fas fa-pen"></i> Edit</button>
+        <button class="btn" id="copy-trainer"><i class="fas fa-save"></i> Save</button>
         <button class="btn btn-primary" id="close-trainer">Close</button>
       </div>
     </div>
@@ -1393,7 +1380,8 @@
         SYNC_QUEUE: 'discipline_tracker_sync_queue',
         SHADOW_AVG: 'discipline_tracker_shadow_avg',
         TRAINER_STATE: 'discipline_tracker_trainer_state',
-        FLOW_PROTOCOL: 'discipline_tracker_flow_protocol'
+        FLOW_PROTOCOL: 'discipline_tracker_flow_protocol',
+        ROADMAP_STATE: 'discipline_tracker_roadmap_state'
       },
       MOTIVATION_INTERVAL: 15000,
       CHART_RANGES: { '7d': 7, '30d': 30, '3m': 90, '6m': 180, '1y': 365 },
@@ -1403,7 +1391,31 @@
         { id: 'project', label: 'Project Work', minutesTarget: 180, sessionsTarget: 0, keywords: ['project'] }
       ]
     };
-    const CATEGORY_DEFINITIONS = {
+    
+    const ANALOG_IC_ROADMAP_TEMPLATE = [
+      { module: 'MODULE 1 — DIODES', days: ['Basic Semiconductor Physics','Different Models of Diodes','Operating Point & Small Signal Analysis of Diode','Zener Diode as Voltage Regulator
+Series Clipper Circuits','Shunt Clipper Circuits
+Clamper Circuits'] },
+      { module: 'MODULE 2 — MOSFET FUNDAMENTALS', days: ['Introduction to MOS & Depletion MOSFETs','Enhancement MOSFETs','Important Concepts of MOS Physics','Introduction to MOSFETs
+Simple MOSFET Circuits'] },
+      { module: 'MODULE 3 — MOS BIASING', days: ['Biasing MOS
+Transconductance
+Output Impedance','Biasing MOS for Amplification','Small Signal Model of MOS','MOSFET Current Mirrors'] },
+      { module: 'MODULE 4 — MOS AMPLIFIERS', days: ['Common Source Amplifier','Common Source Amplifier with Miller Theorem','Cascode Amplifiers'] },
+      { module: 'MODULE 5 — MOS PARASITICS', days: ['MOSFET Capacitances','Noise','Noise of Simple Circuits'] },
+      { module: 'MODULE 6 — DIFFERENTIAL PAIR', days: ['Systematic Mismatch','Random Mismatch','Differential Amplifiers
+Differential Amplifier Offset'] },
+      { module: 'MODULE 7 — FEEDBACK', days: ['Types & Effects of Feedback','Amplifier Configurations','Negative Feedback','Stability of Negative Feedback Systems
+Dominant Pole Compensation'] },
+      { module: 'MODULE 8 — OPAMP BASICS', days: ['Basics of OpAmp','Inverting & Non-Inverting Amplifier','Differential Amplifier using OpAmp
+Active Load'] },
+      { module: 'MODULE 9 — TELESCOPIC OPAMP', days: ['Telescopic OpAmp Structure','Telescopic OpAmp Biasing','Telescopic OpAmp Gain Analysis','Telescopic OpAmp Limitations'] },
+      { module: 'MODULE 10 — FOLDED CASCODE OPAMP', days: ['Folded Cascode Concept','Folded Cascode Biasing','Folded Cascode Gain Analysis','Folded Cascode Advantages'] },
+      { module: 'MODULE 11 — TWO STAGE OPAMP', days: ['Two Stage OpAmp Architecture','Gain Distribution','Miller Compensation','Frequency Stability'] },
+      { module: 'MODULE 12 — ANALOG BLOCK PROJECTS', days: ['Common Source Amplifier Simulation','Current Mirror Design','Differential Pair Simulation','Cascode Amplifier Simulation','Two Stage OpAmp Simulation','Bandgap Reference Concept','LDO Regulator Concept'] }
+    ];
+
+const CATEGORY_DEFINITIONS = {
       'Sleep': ['Night Sleep', 'Nap', 'Recovery'],
       'Productive Work': ['Analog', 'PCB', 'Coding', 'Control Systems', 'Planning', 'Execution'],
       'Physical Training': ['Chest', 'Back', 'Legs', 'Arms', 'Conditioning', 'Mobility'],
@@ -1578,7 +1590,7 @@
       }
       initializeElements() {
         const elements = {};
-        ['stopwatch','task-input','start-btn','stop-btn','sleep-btn','add-favorite','active-task-indicator','active-task-name','active-task-start','favorites-grid','tasks-list','productive-time','sleep-time','total-time','streak-display','current-date','current-time','motivation-line','prod-range','prod-filter','prod-filter-total','graph-productivity-total','graph-total-distraction','graph-logged-distraction','sleep-range','productivity-chart','sleep-chart','streak-popup','streak-count','streak-message','close-streak','view-report','export-data','import-data','import-file','report-modal','report-content','close-modal','print-report','close-report','open-trainer','trainer-modal','trainer-overview','trainer-content','close-trainer','close-trainer-modal','refresh-trainer','copy-trainer','shadow-current-card','shadow-standard-card','shadow-current-minutes','shadow-percent','shadow-gap','shadow-status','shadow-progress-fill','shadow-average','shadow-rank','shadow-badge','shadow-duel','shadow-note','shadow-weekly-average','shadow-momentum','shadow-weekly-gap','shadow-target','shadow-pressure','shadow-score','shadow-needed-tie','shadow-needed-lead','shadow-defense-target','shadow-verdict','shadow-trend','shadow-lead-margin','shadow-duel-you-fill','shadow-duel-shadow-fill','shadow-penalty','shadow-penalty-reason','shadow-penalty-expiry','shadow-distraction-budget','shadow-win-ladder','shadow-mission-score','goal-nptel','goal-yt','goal-project','flow-blockers-status','flow-proneness-status','flow-triggers-status','flow-cycle-status','wake-now-btn','first-action-btn','kill-switch-btn','kill-switch-countdown','flow-before-phone-check','attention-minus-btn','attention-plus-btn','attention-stretch-value','war-score','flow-action-steps'].forEach(id => elements[id] = document.getElementById(id));
+        ['stopwatch','task-input','start-btn','stop-btn','sleep-btn','add-favorite','active-task-indicator','active-task-name','active-task-start','favorites-grid','tasks-list','productive-time','sleep-time','total-time','streak-display','current-date','current-time','motivation-line','prod-range','prod-filter','prod-filter-total','graph-productivity-total','graph-total-distraction','graph-logged-distraction','sleep-range','productivity-chart','sleep-chart','streak-popup','streak-count','streak-message','close-streak','view-report','export-data','import-data','import-file','report-modal','report-content','close-modal','print-report','close-report','open-trainer','trainer-modal','trainer-overview','trainer-content','close-trainer','close-trainer-modal','refresh-trainer','copy-trainer','shadow-current-card','shadow-standard-card','shadow-current-minutes','shadow-percent','shadow-gap','shadow-status','shadow-progress-fill','shadow-average','shadow-rank','shadow-badge','shadow-duel','shadow-note','shadow-weekly-average','shadow-momentum','shadow-weekly-gap','shadow-target','shadow-pressure','shadow-score','shadow-needed-tie','shadow-needed-lead','shadow-defense-target','shadow-verdict','shadow-trend','shadow-lead-margin','shadow-duel-you-fill','shadow-duel-shadow-fill','shadow-penalty','shadow-penalty-reason','shadow-penalty-expiry','shadow-distraction-budget','shadow-win-ladder','shadow-mission-score','goal-nptel','goal-yt','goal-project','flow-blockers-status','flow-proneness-status','flow-triggers-status','flow-cycle-status','wake-now-btn','first-action-btn','kill-switch-btn','kill-switch-countdown','flow-before-phone-check','attention-minus-btn','attention-plus-btn','attention-stretch-value','war-score','flow-action-steps','mission-task-1','mission-task-2','mission-task-3','mission-task-4','goal-revision','shadow-standard-metric','shadow-momentum-score','shadow-consistency-index','shadow-growth-trend','roadmap-penalty-timer'].forEach(id => elements[id] = document.getElementById(id));
         return elements;
       }
       loadFromStorage(key) { try { const d = localStorage.getItem(key); return d ? JSON.parse(d) : null; } catch { return null; } }
@@ -2510,9 +2522,34 @@
         const youShare = Math.max(0, Math.min(100, (competition.myWins / totalDuel) * 100));
         const shadowShare = Math.max(0, Math.min(100, (competition.shadowWins / totalDuel) * 100));
 
+        const last7 = [];
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const ds = this.app.getDateString(d);
+          last7.push(dailyMap.get(ds) || 0);
+        }
+        const sorted7 = [...last7].sort((a,b)=>a-b);
+        const p70Index = Math.max(0, Math.ceil(0.7 * sorted7.length) - 1);
+        const shadowStandard = sorted7[p70Index] || shadowAvg;
+        const momentumScore = shadowStandard > 0 ? (todayMinutes / shadowStandard) : 0;
+        const daysAboveShadow = last7.filter(v => v >= shadowStandard && shadowStandard > 0).length;
+        const consistencyIndex = `${daysAboveShadow}/7`;
+        const xMean = 3;
+        const yMean = last7.reduce((a,b)=>a+b,0)/7;
+        let num = 0;
+        let den = 0;
+        last7.forEach((v, i) => { const dx = i - xMean; num += dx * (v - yMean); den += dx*dx; });
+        const slope = den ? num / den : 0;
+        const growthTrend = slope > 2 ? 'UP' : (slope < -2 ? 'DOWN' : 'STABLE');
+
         this.app.elements['shadow-current-minutes'].textContent = this.app.formatDuration(todayMinutes);
         this.app.elements['shadow-average'].textContent = this.app.formatDuration(shadowAvg);
         this.app.elements['shadow-weekly-average'].textContent = this.app.formatDuration(currentAvg);
+        if (this.app.elements['shadow-standard-metric']) this.app.elements['shadow-standard-metric'].textContent = this.app.formatDuration(shadowStandard);
+        if (this.app.elements['shadow-momentum-score']) this.app.elements['shadow-momentum-score'].textContent = `${momentumScore.toFixed(2)}x`;
+        if (this.app.elements['shadow-consistency-index']) this.app.elements['shadow-consistency-index'].textContent = consistencyIndex;
+        if (this.app.elements['shadow-growth-trend']) this.app.elements['shadow-growth-trend'].textContent = growthTrend;
         this.app.elements['shadow-target'].textContent = this.app.formatDuration(targetToday);
         this.app.elements['shadow-needed-tie'].textContent = this.app.formatDuration(neededTie);
         this.app.elements['shadow-needed-lead'].textContent = this.app.formatDuration(neededLead);
@@ -2578,6 +2615,9 @@
         this.applyGoalStatus('goal-yt', CONFIG.DAILY_GOALS[1], goalProgress.yt || { minutes: 0, sessions: 0, minutesTarget: 120, sessionsTarget: 2 });
         this.applyGoalStatus('goal-project', CONFIG.DAILY_GOALS[2], goalProgress.project || { minutes: 0, sessions: 0, minutesTarget: 180, sessionsTarget: 0 });
 
+        if (this.app.trainerEngine?.syncMissionFromRoadmap) this.app.trainerEngine.syncMissionFromRoadmap();
+        if (this.app.trainerEngine?.updatePenaltyTimer) this.app.trainerEngine.updatePenaltyTimer();
+
         this.app.elements['shadow-duel-you-fill'].style.width = `${youShare}%`;
         this.app.elements['shadow-duel-shadow-fill'].style.width = `${shadowShare}%`;
         this.app.elements['shadow-note'].textContent = 'Calculated from real historical data only';
@@ -2624,6 +2664,7 @@
       constructor(app) {
         this.app = app;
         this.state = this.loadState();
+        this.state.roadmap = this.getRoadmapState();
         this.levels = [
           { name: 'Dormant', min: 0, max: 60 },
           { name: 'Initiate', min: 60, max: 120 },
@@ -2933,11 +2974,273 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         content.innerHTML = html;
       }
 
+      getRoadmapState() {
+        const makeFresh = () => {
+          let dayCounter = 1;
+          const modules = ANALOG_IC_ROADMAP_TEMPLATE.map((m, mi) => ({
+            name: m.module,
+            days: m.days.map((task, di) => ({
+              day: `Day ${dayCounter++}`,
+              text: task,
+              completed: false,
+              state: (mi === 0 && di === 0) ? 'active' : 'locked',
+              unlockedAt: (mi === 0 && di === 0) ? Date.now() : null,
+              dueAt: null,
+              completedAt: null
+            }))
+          }));
+          const first = modules[0]?.days?.[0];
+          if (first) {
+            const due = new Date();
+            due.setHours(23, 59, 59, 999);
+            first.dueAt = due.getTime();
+          }
+          return { modules, editMode: false, startedAt: Date.now() };
+        };
+
+        const stored = this.app.loadFromStorage(CONFIG.STORAGE_KEYS.ROADMAP_STATE);
+        if (!stored?.modules?.length) return makeFresh();
+
+        // Reset bad seed/test data where everything was marked done.
+        const allDone = stored.modules.every(m => (m.days || []).length && m.days.every(d => d.completed));
+        if (allDone) return makeFresh();
+
+        // Merge with latest template while preserving completion history.
+        let dayCounter = 1;
+        const merged = {
+          modules: ANALOG_IC_ROADMAP_TEMPLATE.map((tmpl, mi) => {
+            const existingModule = stored.modules?.[mi] || {};
+            return {
+              name: existingModule.name || tmpl.module,
+              days: tmpl.days.map((task, di) => {
+                const existing = existingModule.days?.[di] || {};
+                return {
+                  day: `Day ${dayCounter++}`,
+                  text: existing.text || task,
+                  completed: !!existing.completed,
+                  state: 'locked',
+                  unlockedAt: existing.unlockedAt || null,
+                  dueAt: existing.dueAt || null,
+                  completedAt: existing.completedAt || null
+                };
+              })
+            };
+          }),
+          editMode: !!stored.editMode,
+          startedAt: stored.startedAt || Date.now()
+        };
+
+        return merged;
+      }
+
+      normalizeRoadmapDays() {
+        let counter = 1;
+        this.state.roadmap.modules.forEach(mod => mod.days.forEach(day => { day.day = `Day ${counter++}`; }));
+      }
+
+      recalculateRoadmapStates() {
+        this.normalizeRoadmapDays();
+        let activeAssigned = false;
+        const now = Date.now();
+        this.state.roadmap.modules.forEach((mod) => {
+          mod.days.forEach((day, di) => {
+            if (day.completed) {
+              day.state = 'completed';
+              if (!day.completedAt) day.completedAt = now;
+              return;
+            }
+            if (!activeAssigned) {
+              day.state = 'active';
+              activeAssigned = true;
+              if (!day.unlockedAt) day.unlockedAt = now;
+              if (!day.dueAt) {
+                const due = new Date();
+                due.setHours(23, 59, 59, 999);
+                day.dueAt = due.getTime();
+              }
+            } else {
+              day.state = 'locked';
+            }
+          });
+        });
+      }
+
+      ensureRoadmap() {
+        if (!this.state.roadmap) this.state.roadmap = this.getRoadmapState();
+        this.recalculateRoadmapStates();
+      }
+
+      getRoadmapProgress() {
+        this.ensureRoadmap();
+        let activeModule = null;
+        let activeDay = null;
+        let moduleIndex = 0;
+        for (let mi = 0; mi < this.state.roadmap.modules.length; mi++) {
+          const mod = this.state.roadmap.modules[mi];
+          const day = mod.days.find(d => d.state === 'active');
+          if (day) { activeModule = mod; activeDay = day; moduleIndex = mi; break; }
+          if (!mod.days.every(d => d.completed)) { activeModule = mod; moduleIndex = mi; break; }
+        }
+        return { moduleIndex, activeModule, activeDay };
+      }
+
+      getDailyMissionTasks() {
+        const { activeModule, activeDay } = this.getRoadmapProgress();
+        if (!activeModule || !activeDay) return ['Roadmap Topic', 'Roadmap Topic', 'Project Work', 'Revision'];
+        const activeIdx = activeModule.days.findIndex(d => d.day === activeDay.day);
+        const accumulated = activeModule.days.slice(0, activeIdx + 1).map(d => d.text.split('\n')[0].trim()).filter(Boolean);
+        const recent = accumulated.slice(-2);
+        const missionTopic1 = recent[0] || activeDay.text.split('\n')[0] || 'Roadmap Topic';
+        const missionTopic2 = recent[1] || missionTopic1;
+        return [missionTopic1, missionTopic2, 'Project Work', 'Revision'];
+      }
+
+      getRoadmapMissionProgress(dateStr = this.app.getDateString(new Date())) {
+        const result = {
+          topic1: { minutes: 0, sessions: 0 },
+          topic2: { minutes: 0, sessions: 0 },
+          revision: { minutes: 0, sessions: 0 }
+        };
+        const tasks = this.getDailyMissionTasks();
+        const topic1 = (tasks[0] || '').toLowerCase();
+        const topic2 = (tasks[1] || '').toLowerCase();
+
+        this.app.state.tasks.forEach(task => {
+          if (!task || task.date !== dateStr || !Number.isFinite(task.duration) || task.duration <= 0) return;
+          const hay = `${task.description || ''} ${task.subcategory || ''} ${task.category || ''}`.toLowerCase();
+          if (topic1 && hay.includes(topic1)) {
+            result.topic1.minutes += task.duration;
+            result.topic1.sessions += 1;
+          }
+          if (topic2 && hay.includes(topic2)) {
+            result.topic2.minutes += task.duration;
+            result.topic2.sessions += 1;
+          }
+          if (hay.includes('revision') || hay.includes('revise') || hay.includes('review')) {
+            result.revision.minutes += task.duration;
+            result.revision.sessions += 1;
+          }
+        });
+
+        return result;
+      }
+
+      syncMissionFromRoadmap() {
+        const tasks = this.getDailyMissionTasks();
+        const ids = ['mission-task-1', 'mission-task-2', 'mission-task-3', 'mission-task-4'];
+        ids.forEach((id, idx) => {
+          const el = this.app.elements[id];
+          if (el) el.textContent = `${idx + 1}. ${tasks[idx] || '-'}`;
+        });
+
+        const roadmapProgress = this.getRoadmapMissionProgress();
+        const topic1El = this.app.elements['goal-nptel'];
+        const topic2El = this.app.elements['goal-yt'];
+        const revisionEl = this.app.elements['goal-revision'];
+
+        if (topic1El) {
+          topic1El.textContent = `${this.app.formatDuration(roadmapProgress.topic1.minutes)} • ${roadmapProgress.topic1.sessions}/2`;
+          topic1El.classList.toggle('shadow-goal-done', roadmapProgress.topic1.sessions >= 2 || roadmapProgress.topic1.minutes >= 120);
+        }
+
+        if (topic2El) {
+          topic2El.textContent = `${this.app.formatDuration(roadmapProgress.topic2.minutes)} • ${roadmapProgress.topic2.sessions}/2`;
+          topic2El.classList.toggle('shadow-goal-done', roadmapProgress.topic2.sessions >= 2 || roadmapProgress.topic2.minutes >= 120);
+        }
+
+        if (revisionEl) {
+          revisionEl.textContent = roadmapProgress.revision.minutes > 0
+            ? `${this.app.formatDuration(roadmapProgress.revision.minutes)} • ${roadmapProgress.revision.sessions} session(s)`
+            : 'Optional';
+          revisionEl.classList.toggle('shadow-goal-done', roadmapProgress.revision.minutes > 0);
+        }
+      }
+
+      updatePenaltyTimer() {
+        const el = this.app.elements['roadmap-penalty-timer'];
+        if (!el) return;
+        const { activeDay } = this.getRoadmapProgress();
+        if (!activeDay) { el.textContent = 'No active penalty'; return; }
+        const dueAt = Number(activeDay.dueAt || 0);
+        if (!dueAt) { el.textContent = 'No active penalty'; return; }
+        const ms = Math.max(0, dueAt - Date.now());
+        const h = String(Math.floor(ms / 3600000)).padStart(2, '0');
+        const m = String(Math.floor((ms % 3600000) / 60000)).padStart(2, '0');
+        const s = String(Math.floor((ms % 60000) / 1000)).padStart(2, '0');
+        el.textContent = ms > 0 ? `Active day deadline in ${h}:${m}:${s}` : 'Deadline reached • penalty active';
+      }
+
+      renderRoadmap() {
+        this.ensureRoadmap();
+        const overview = this.app.elements['trainer-overview'];
+        const content = this.app.elements['trainer-content'];
+        if (!overview || !content) return;
+        const { moduleIndex, activeModule, activeDay } = this.getRoadmapProgress();
+        const completedModules = this.state.roadmap.modules.filter(m => m.days.every(d => d.completed)).length;
+        overview.innerHTML = `
+          <div class="trainer-overview-card"><div class="trainer-overview-label">Active Module</div><div class="trainer-overview-value">${this.escapeHtml(activeModule?.name || 'Completed')}</div></div>
+          <div class="trainer-overview-card"><div class="trainer-overview-label">Active Day</div><div class="trainer-overview-value">${this.escapeHtml(activeDay?.day || '-')}</div></div>
+          <div class="trainer-overview-card"><div class="trainer-overview-label">Modules Complete</div><div class="trainer-overview-value">${completedModules}/${this.state.roadmap.modules.length}</div></div>
+          <div class="trainer-overview-card"><div class="trainer-overview-label">Edit Mode</div><div class="trainer-overview-value">${this.state.roadmap.editMode ? 'ON' : 'OFF'}</div></div>
+        `;
+
+        const stateIcon = (st) => st === 'completed' ? '✔' : (st === 'active' ? '●' : '🔒');
+
+        let html = '';
+        this.state.roadmap.modules.forEach((mod, mi) => {
+          const done = mod.days.every(d => d.completed);
+          const moduleTitle = this.state.roadmap.editMode ? `<input class="roadmap-module-edit" data-module="${mi}" value="${this.escapeHtml(mod.name)}"/>` : this.escapeHtml(mod.name);
+          html += `<section class="trainer-section"><div class="trainer-section-title">${moduleTitle} ${done ? '✔' : ''}</div>`;
+          mod.days.forEach((day, di) => {
+            const checked = day.completed ? 'checked' : '';
+            const canToggle = day.state === 'active' || day.state === 'completed';
+            const disabled = canToggle ? '' : 'disabled';
+            const icon = stateIcon(day.state);
+            const statusText = day.state ? day.state.toUpperCase() : 'LOCKED';
+            if (this.state.roadmap.editMode) {
+              html += `<div class="trainer-row"><div class="trainer-key">${icon} ${day.day}</div><div class="trainer-val"><textarea data-module="${mi}" data-day="${di}" class="roadmap-edit">${this.escapeHtml(day.text)}</textarea><div class="trainer-overview-label">${statusText}</div></div><label><input type="checkbox" data-module="${mi}" data-day="${di}" class="roadmap-check" ${checked} ${disabled}/> Done</label></div>`;
+            } else {
+              html += `<div class="trainer-row"><div class="trainer-key">${icon} ${day.day}</div><div class="trainer-val">${this.escapeHtml(day.text)}<div class="trainer-overview-label">${statusText}</div></div><label><input type="checkbox" data-module="${mi}" data-day="${di}" class="roadmap-check" ${checked} ${disabled}/> Done</label></div>`;
+            }
+          });
+          html += `</section>`;
+        });
+        content.innerHTML = html;
+
+        content.querySelectorAll('.roadmap-check').forEach(cb => cb.addEventListener('change', (e) => {
+          const m = Number(e.target.getAttribute('data-module'));
+          const d = Number(e.target.getAttribute('data-day'));
+          const day = this.state.roadmap.modules[m]?.days[d];
+          if (!day || (day.state !== 'active' && day.state !== 'completed')) return;
+          day.completed = !!e.target.checked;
+          if (day.completed) day.completedAt = Date.now();
+          this.recalculateRoadmapStates();
+          this.app.saveToStorage(CONFIG.STORAGE_KEYS.ROADMAP_STATE, this.state.roadmap);
+          this.refresh();
+          this.app.shadowEngine?.refresh(false);
+        }));
+
+        if (this.state.roadmap.editMode) {
+          content.querySelectorAll('.roadmap-module-edit').forEach(inp => inp.addEventListener('change', (e) => {
+            const m = Number(e.target.getAttribute('data-module'));
+            if (this.state.roadmap.modules[m]) this.state.roadmap.modules[m].name = e.target.value.trim() || this.state.roadmap.modules[m].name;
+          }));
+
+          content.querySelectorAll('.roadmap-edit').forEach(area => area.addEventListener('change', (e) => {
+            const m = Number(e.target.getAttribute('data-module'));
+            const d = Number(e.target.getAttribute('data-day'));
+            const day = this.state.roadmap.modules[m]?.days[d];
+            if (!day) return;
+            day.text = e.target.value.trim() || day.text;
+          }));
+        }
+      }
+
       refresh() {
-        const snapshot = this.buildTrainerSnapshot();
-        const reportText = this.buildReport(snapshot);
-        this.lastReportText = reportText;
-        this.renderStructuredReport(reportText, snapshot);
+        this.ensureRoadmap();
+        this.renderRoadmap();
+        this.syncMissionFromRoadmap();
+        this.updatePenaltyTimer();
       }
 
       showWindow() {
@@ -2946,11 +3249,8 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
       }
 
       copyPlan() {
-        const text = this.lastReportText || this.app.elements['trainer-content']?.textContent || '';
-        if (!text) return;
-        if (navigator.clipboard?.writeText) {
-          navigator.clipboard.writeText(text).catch(() => {});
-        }
+        this.ensureRoadmap();
+        this.app.saveToStorage(CONFIG.STORAGE_KEYS.ROADMAP_STATE, this.state.roadmap);
       }
 
       hideWindow() {
@@ -3233,15 +3533,24 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
               active: { animation: { duration: 320 } },
               resize: { animation: { duration: 320 } }
             },
-            plugins: { legend: { display: false } },
+            interaction: { mode: 'nearest', intersect: false, axis: 'x' },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                mode: 'nearest',
+                intersect: false,
+                filter: (item) => item.datasetIndex === 0,
+                callbacks: {
+                  label: (ctx) => {
+                    const p = Number(ctx.raw || 0);
+                    return `Productivity: ${p.toFixed(2)}h`;
+                  }
+                }
+              }
+            },
             scales: { y: { beginAtZero: true, ticks: { callback: v => v + 'h' } } },
             elements: {
-              point: {
-                radius: 0,
-                hoverRadius: 0,
-                pointStyle: 'circle',
-                hoverBorderWidth: 2
-              },
+              point: { radius: 0, hoverRadius: 0, hitRadius: 12 },
               line: { tension: 0.34, borderWidth: 2.5 }
             }
           }
@@ -3255,99 +3564,83 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
             responsive: true,
             maintainAspectRatio: false,
             animation: { duration: 380, easing: 'easeOutQuad' },
-            plugins: { legend: { display: false } },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => `Sleep Hours: ${Number(ctx.raw || 0).toFixed(1)}h`
+                }
+              }
+            },
             scales: { y: { beginAtZero: true, max: 12, ticks: { callback: v => v + 'h' } } }
           }
         });
       }
 
       getProductivityData(range='7d', filter='all') {
+        const labels = [];
+        const data = [];
+        const today = new Date();
+
         if (range === 'weekly') {
-          const data = [];
-          const labels = [];
-          const today = new Date();
           const weeks = 12;
           for (let w = weeks - 1; w >= 0; w--) {
             const weekEnd = new Date(today);
             weekEnd.setDate(today.getDate() - (w * 7));
             const weekStart = new Date(weekEnd);
             weekStart.setDate(weekEnd.getDate() - 6);
-
             let weekMinutes = 0;
             for (let i = 0; i < 7; i++) {
               const d = new Date(weekStart);
               d.setDate(weekStart.getDate() + i);
               const ds = this.app.getDateString(d);
               if (filter === 'total_distraction') {
-                const logged = this.app.state.tasks
-                  .filter(t => t.date===ds && this.passesProductivityFilter(t, 'logged_distraction'))
-                  .reduce((a,t)=>a+t.duration,0);
-                const inferred = this.app.getInferredWasteMinutesForDate(ds, this.app.state.tasks);
-                weekMinutes += (logged + inferred);
+                const logged = this.app.state.tasks.filter(t => t.date===ds && this.passesProductivityFilter(t, 'logged_distraction')).reduce((a,t)=>a+t.duration,0);
+                weekMinutes += logged + this.app.getInferredWasteMinutesForDate(ds, this.app.state.tasks);
               } else {
-                weekMinutes += this.app.state.tasks
-                  .filter(t => t.date===ds && this.passesProductivityFilter(t, filter))
-                  .reduce((a,t)=>a+t.duration,0);
+                weekMinutes += this.app.state.tasks.filter(t => t.date===ds && this.passesProductivityFilter(t, filter)).reduce((a,t)=>a+t.duration,0);
               }
             }
-
-            const weekAvgDailyHours = parseFloat(((weekMinutes / 7) / 60).toFixed(2));
             labels.push(`${weekStart.toLocaleDateString('en-US',{month:'short',day:'numeric'})}–${weekEnd.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`);
-            data.push(weekAvgDailyHours);
+            data.push(parseFloat(((weekMinutes / 7) / 60).toFixed(2)));
           }
-
-          const colors = this.getColorScheme(filter);
-          return {
-            labels,
-            datasets: [{
-              label:'Weekly Avg Hours/Day',
-              data,
-              borderColor: colors.border,
-              backgroundColor: colors.fill,
-              pointBackgroundColor: colors.border,
-              pointBorderColor: 'rgba(255,255,255,0.65)',
-              pointHoverBackgroundColor: '#ffffff',
-              pointHoverBorderColor: colors.border,
-              fill:true
-            }]
-          };
+        } else {
+          const days = CONFIG.CHART_RANGES[range] || 7;
+          for (let i = days - 1; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(today.getDate() - i);
+            const ds = this.app.getDateString(d);
+            let mins = 0;
+            if (filter === 'total_distraction') {
+              const logged = this.app.state.tasks.filter(t => t.date===ds && this.passesProductivityFilter(t, 'logged_distraction')).reduce((a,t)=>a+t.duration,0);
+              mins = logged + this.app.getInferredWasteMinutesForDate(ds, this.app.state.tasks);
+            } else {
+              mins = this.app.state.tasks.filter(t => t.date===ds && this.passesProductivityFilter(t, filter)).reduce((a,t)=>a+t.duration,0);
+            }
+            labels.push(d.toLocaleDateString('en-US',{month:'short',day:'numeric'}));
+            data.push(parseFloat((mins/60).toFixed(2)));
+          }
         }
 
-        const days = CONFIG.CHART_RANGES[range] || 7, data=[], labels=[], today=new Date();
-        for (let i=days-1;i>=0;i--) {
-          const d=new Date(today);
-          d.setDate(today.getDate()-i);
-          const ds=this.app.getDateString(d);
-          let mins = 0;
-          if (filter === 'total_distraction') {
-            const logged = this.app.state.tasks
-              .filter(t => t.date===ds && this.passesProductivityFilter(t, 'logged_distraction'))
-              .reduce((a,t)=>a+t.duration,0);
-            const inferred = this.app.getInferredWasteMinutesForDate(ds, this.app.state.tasks);
-            mins = logged + inferred;
-          } else {
-            mins = this.app.state.tasks
-              .filter(t => t.date===ds && this.passesProductivityFilter(t, filter))
-              .reduce((a,t)=>a+t.duration,0);
-          }
-          labels.push(d.toLocaleDateString('en-US',{month:'short',day:'numeric'}));
-          data.push(parseFloat((mins/60).toFixed(2)));
-        }
         const colors = this.getColorScheme(filter);
-        return {
-          labels,
-          datasets: [{
-            label:'Tracked Hours',
-            data,
-            borderColor: colors.border,
-            backgroundColor: colors.fill,
-            pointBackgroundColor: colors.border,
-            pointBorderColor: 'rgba(255,255,255,0.65)',
-            pointHoverBackgroundColor: '#ffffff',
-            pointHoverBorderColor: colors.border,
-            fill:true
-          }]
-        };
+        const datasets = [{
+          label: 'Productivity',
+          data,
+          borderColor: colors.border,
+          backgroundColor: colors.fill,
+          pointBackgroundColor: 'transparent',
+          pointBorderColor: 'transparent',
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          pointHitRadius: 12,
+          borderWidth: 2.5,
+          tension: 0.34,
+          fill: true
+        }];
+
+        // Keep UI visually simple: single productivity curve only.
+
+        return { labels, datasets };
       }
 
       getSleepData(range='7d') {
@@ -3434,12 +3727,12 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           const file = e.target.files?.[0];
           this.app.uiManager.importDataFromFile(file);
         });
-        this.app.elements['wake-now-btn'].addEventListener('click', () => this.app.flowEngine.markWakeNow());
-        this.app.elements['first-action-btn'].addEventListener('click', () => this.app.flowEngine.markFirstActionNow());
-        this.app.elements['kill-switch-btn'].addEventListener('click', () => this.app.flowEngine.runKillSwitch());
-        this.app.elements['flow-before-phone-check'].addEventListener('change', (e) => this.app.flowEngine.toggleFlowBeforePhone(e.target.checked));
-        this.app.elements['attention-minus-btn'].addEventListener('click', () => this.app.flowEngine.decrementAttentionStretch());
-        this.app.elements['attention-plus-btn'].addEventListener('click', () => this.app.flowEngine.incrementAttentionStretch());
+        if (this.app.elements['wake-now-btn']) this.app.elements['wake-now-btn'].addEventListener('click', () => this.app.flowEngine.markWakeNow());
+        if (this.app.elements['first-action-btn']) this.app.elements['first-action-btn'].addEventListener('click', () => this.app.flowEngine.markFirstActionNow());
+        if (this.app.elements['kill-switch-btn']) this.app.elements['kill-switch-btn'].addEventListener('click', () => this.app.flowEngine.runKillSwitch());
+        if (this.app.elements['flow-before-phone-check']) this.app.elements['flow-before-phone-check'].addEventListener('change', (e) => this.app.flowEngine.toggleFlowBeforePhone(e.target.checked));
+        if (this.app.elements['attention-minus-btn']) this.app.elements['attention-minus-btn'].addEventListener('click', () => this.app.flowEngine.decrementAttentionStretch());
+        if (this.app.elements['attention-plus-btn']) this.app.elements['attention-plus-btn'].addEventListener('click', () => this.app.flowEngine.incrementAttentionStretch());
         document.querySelectorAll('.war-mode-check').forEach(cb => {
           cb.addEventListener('change', (e) => {
             const key = e.target.getAttribute('data-key');
@@ -3451,7 +3744,7 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         this.app.elements['print-report'].addEventListener('click', () => window.print());
         this.app.elements['close-trainer'].addEventListener('click', () => this.app.trainerEngine.hideWindow());
         this.app.elements['close-trainer-modal'].addEventListener('click', () => this.app.trainerEngine.hideWindow());
-        this.app.elements['refresh-trainer'].addEventListener('click', () => this.app.trainerEngine.refresh());
+        this.app.elements['refresh-trainer'].addEventListener('click', () => { this.app.trainerEngine.state.roadmap.editMode = !this.app.trainerEngine.state.roadmap.editMode; this.app.trainerEngine.refresh(); });
         this.app.elements['copy-trainer'].addEventListener('click', () => this.app.trainerEngine.copyPlan());
         this.app.elements['close-streak'].addEventListener('click', () => this.app.uiManager.hideStreakPopup());
         this.app.elements['report-modal'].addEventListener('click', e => { if (e.target === this.app.elements['report-modal']) this.app.uiManager.hideReport(); });
