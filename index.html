@@ -94,63 +94,63 @@
           <h3 class="section-title"><i class="fas fa-robot"></i> Trainer Recommendation</h3>
           <div class="trainer-inline" id="trainer-inline-advice">Start a focused work block to generate trainer guidance.</div>
 
+          <h3 class="section-title"><i class="fas fa-brain"></i> Focus Builder</h3>
+          <section class="flow-lab-section">
+            <div class="flow-lab-grid">
+              <div class="flow-card">
+                <h4>Attention Stretch + First Action Trigger</h4>
+                <div class="flow-row"><span>Flow Blockers</span><strong id="flow-blockers-status">-</strong></div>
+                <div class="flow-row"><span>Flow Proneness</span><strong id="flow-proneness-status">-</strong></div>
+                <div class="flow-row"><span>Flow Triggers</span><strong id="flow-triggers-status">-</strong></div>
+                <div class="flow-row"><span>Flow Cycle</span><strong id="flow-cycle-status">-</strong></div>
+                <div class="flow-actions">
+                  <button class="btn" id="wake-now-btn"><i class="fas fa-sun"></i> Wake Now</button>
+                  <button class="btn" id="first-action-btn"><i class="fas fa-bolt"></i> First Action</button>
+                  <button class="btn btn-success" id="kill-switch-btn"><i class="fas fa-play"></i> 3-2-1 Quick Activation</button>
+                </div>
+                <div id="kill-switch-countdown">Ready</div>
+                <div class="flow-steps"><div class="flow-steps-title">Today's Execution Steps</div><ol class="flow-steps-list" id="flow-action-steps"></ol></div>
+              </div>
+              <div class="flow-card">
+                <h4>Pre-Phone Rule</h4>
+                <div class="flow-checklist"><label><input type="checkbox" id="flow-before-phone-check" /> Completed 2-3h priority work before phone</label></div>
+                <div class="flow-row"><span>Attention Stretch</span><strong id="attention-stretch-value">0 min</strong></div>
+                <div class="flow-actions">
+                  <button class="btn" id="attention-minus-btn"><i class="fas fa-minus"></i> -1 min stretch</button>
+                  <button class="btn" id="attention-plus-btn"><i class="fas fa-plus"></i> +1 min stretch</button>
+                </div>
+              </div>
+              <div class="flow-card">
+                <h4>Daily War Mode</h4>
+                <div class="flow-checklist">
+                  <label><input type="checkbox" class="war-mode-check" data-key="cold_shower" /> Cold shower</label>
+                  <label><input type="checkbox" class="war-mode-check" data-key="pushups" /> 100 push-ups</label>
+                  <label><input type="checkbox" class="war-mode-check" data-key="deep_work_30" /> 30 min deep work</label>
+                  <label><input type="checkbox" class="war-mode-check" data-key="speak_up" /> Speak up despite fear</label>
+                  <label><input type="checkbox" class="war-mode-check" data-key="wake_before_sun" /> Wake before sunrise</label>
+                </div>
+                <div class="flow-row"><span>War Score</span><strong id="war-score">0/5</strong></div>
+              </div>
+            </div>
+          </section>
+
           <h3 class="section-title"><i class="fas fa-star"></i> Quick Start Favorites</h3>
           <div class="favorites-grid" id="favorites-grid"></div>
           <h3 class="section-title"><i class="fas fa-tasks"></i> Today's Activities</h3>
           <div class="tasks-list" id="tasks-list"></div>
         </div>
-      </div>
-    </section>
+      </section>
 
     <section id="shadow-engine" class="app-section">
-      <h2 class="section-title-main">Shadow + Focus Command Center</h2>
+      <h2 class="section-title-main">Shadow Engine</h2>
       <div class="mission-grid">
         <div class="stat-card"><div class="stat-value" id="shadow-summary-gap">0h 00m</div><div class="stat-label">Shadow Gap</div></div>
         <div class="stat-card"><div class="stat-value" id="shadow-summary-win">0h 00m</div><div class="stat-label">Minutes to Win</div></div>
         <div class="stat-card"><div class="stat-value" id="shadow-summary-pressure">Pressure: -</div><div class="stat-label">Pressure Level</div></div>
         <div class="stat-card"><div class="stat-value" id="shadow-summary-target">0h 00m</div><div class="stat-label">Daily Target</div></div>
       </div>
-
-      <section class="command-center">
-        <div class="flow-card">
-          <h4>Do This Now</h4>
-          <div class="flow-row"><span>Attention Stretch</span><strong id="attention-stretch-value">0 min</strong></div>
-          <div class="flow-actions">
-            <button class="btn" id="wake-now-btn"><i class="fas fa-sun"></i> Wake Now</button>
-            <button class="btn" id="first-action-btn"><i class="fas fa-bolt"></i> First Action</button>
-            <button class="btn btn-success" id="kill-switch-btn"><i class="fas fa-play"></i> 3-2-1 Kill Switch</button>
-          </div>
-          <div class="flow-actions">
-            <button class="btn" id="attention-minus-btn"><i class="fas fa-minus"></i> -1 min</button>
-            <button class="btn" id="attention-plus-btn"><i class="fas fa-plus"></i> +1 min</button>
-          </div>
-          <div id="kill-switch-countdown">Ready</div>
-          <div class="flow-checklist"><label><input type="checkbox" id="flow-before-phone-check" /> Done priority work before phone</label></div>
-        </div>
-
-        <div class="flow-card">
-          <h4>Daily Discipline Checks</h4>
-          <div class="flow-checklist">
-            <label><input type="checkbox" class="war-mode-check" data-key="cold_shower" /> Cold shower</label>
-            <label><input type="checkbox" class="war-mode-check" data-key="pushups" /> 100 push-ups</label>
-            <label><input type="checkbox" class="war-mode-check" data-key="deep_work_30" /> 30 min deep work</label>
-            <label><input type="checkbox" class="war-mode-check" data-key="speak_up" /> Speak up despite fear</label>
-            <label><input type="checkbox" class="war-mode-check" data-key="wake_before_sun" /> Wake before sunrise</label>
-          </div>
-          <div class="flow-row"><span>War Score</span><strong id="war-score">0/5</strong></div>
-          <div class="flow-steps"><div class="flow-steps-title">Execution Steps</div><ol class="flow-steps-list" id="flow-action-steps"></ol></div>
-        </div>
-      </section>
-
       <details class="advanced-shadow-panel">
-        <summary>Advanced Shadow + Flow Analysis (open only if needed)</summary>
-        <div class="flow-card compact-flow-status">
-          <div class="flow-row"><span>Flow Blockers</span><strong id="flow-blockers-status">-</strong></div>
-          <div class="flow-row"><span>Flow Proneness</span><strong id="flow-proneness-status">-</strong></div>
-          <div class="flow-row"><span>Flow Triggers</span><strong id="flow-triggers-status">-</strong></div>
-          <div class="flow-row"><span>Flow Cycle</span><strong id="flow-cycle-status">-</strong></div>
-        </div>
-
+        <summary>Advanced Shadow Analysis</summary>
         <section class="shadow-section">
           <div class="shadow-grid">
             <div class="shadow-card" id="shadow-current-card">
