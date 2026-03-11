@@ -1,9 +1,13 @@
 # Modules
 
-- `core/`: app bootstrap, state, event bus, shared utilities.
-- `ui/`: rendering layer and DOM updates.
-- `logic/`: business rules (shadow, trainer, flow protocol, analytics).
-- `services/`: persistence, import/export, sync integrations.
+The app is now organized by workflow and bounded contexts:
 
-Current implementation is centralized in `assets/js/app.js` after extraction from inline script.
-Next step is incremental class-by-class relocation into these module folders.
+- `/core`: central state manager and shared app state access.
+- `/execution`: Execution Mode helpers (focus builder, quick presets).
+- `/shadow-engine`: shadow summary and advanced analysis adapters.
+- `/trainer`: recommendation generation logic.
+- `/analytics`: long-term insights and KPI synchronization.
+- `/ui`: Mission Control-first shell navigation and progressive disclosure.
+- `/services`: orchestration and state synchronization between modules.
+
+Legacy engine logic remains in `assets/js/app.js` to preserve current timer behavior and all existing mechanics.
