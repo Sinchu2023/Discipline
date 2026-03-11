@@ -1257,10 +1257,8 @@
                 <option value="6m">6 Months</option>
                 <option value="1y">1 Year</option>
               </select>
-              <select class="range-select" id="prod-filter">
-                <option value="productivity">Productivity</option>
-                <option value="total_distraction">Total Distraction</option>
-                <option value="logged_distraction">Logged Distractions</option>
+              <select class="range-select" id="prod-filter" disabled>
+                <option value="productivity" selected>Productivity</option>
               </select>
               <span class="prod-total-counter" id="prod-filter-total">0h 00m</span>
             </div>
@@ -3357,7 +3355,7 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
       }
 
       getCurrentFilter() {
-        return this.app.elements['prod-filter']?.value || 'productivity';
+        return 'productivity';
       }
 
       passesProductivityFilter(task, filter) {
@@ -3370,9 +3368,7 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
       }
 
       getColorScheme(filter) {
-        if (filter === 'productivity') return { border: 'rgb(40, 180, 99)', fill: 'rgba(40, 180, 99, 0.16)' };
-        if (filter === 'logged_distraction' || filter === 'total_distraction') return { border: 'rgb(220, 53, 69)', fill: 'rgba(220, 53, 69, 0.16)' };
-        return { border: 'rgb(0,123,255)', fill: 'rgba(0,123,255,0.12)' };
+        return { border: 'rgb(40, 180, 99)', fill: 'rgba(40, 180, 99, 0.16)' };
       }
 
       createCharts() {
