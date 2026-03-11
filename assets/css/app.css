@@ -1014,3 +1014,20 @@
       }
     }
   
+
+/* Shell refactor */
+.app-shell-nav { display:flex; gap:10px; margin:18px 0; flex-wrap:wrap; }
+.shell-nav-btn { background:#161a23; color:var(--text-primary); border:1px solid #2a3040; border-radius:10px; padding:10px 14px; cursor:pointer; }
+.shell-nav-btn.active { background:linear-gradient(135deg,#1f6feb,#2d8cff); border-color:#3e95ff; }
+.app-section { display:none; }
+.app-section.active { display:block; }
+.section-title-main { font-size:1.2rem; margin-bottom:14px; color:var(--text-primary); }
+.mission-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:14px; }
+.mission-action-card { background:#111827; border:1px solid #273246; border-radius:12px; padding:16px; margin-bottom:14px; }
+.compact-stats { grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); }
+.execution-layout { display:block; }
+.quick-presets { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 14px; }
+.trainer-inline { background:#0f172a; border:1px solid #334155; padding:12px; border-radius:10px; margin-bottom:12px; color:#cbd5e1; }
+.advanced-shadow-panel { background:#0d1320; border:1px solid #2d3b55; border-radius:12px; padding:8px 12px; }
+.advanced-shadow-panel > summary { cursor:pointer; font-weight:600; margin-bottom:8px; }
+.historical-card { margin-bottom:12px; }
