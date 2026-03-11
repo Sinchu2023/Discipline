@@ -2058,12 +2058,12 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           const file = e.target.files?.[0];
           this.app.uiManager.importDataFromFile(file);
         });
-        this.app.elements['wake-now-btn'].addEventListener('click', () => this.app.flowEngine.markWakeNow());
-        this.app.elements['first-action-btn'].addEventListener('click', () => this.app.flowEngine.markFirstActionNow());
-        this.app.elements['kill-switch-btn'].addEventListener('click', () => this.app.flowEngine.runKillSwitch());
-        this.app.elements['flow-before-phone-check'].addEventListener('change', (e) => this.app.flowEngine.toggleFlowBeforePhone(e.target.checked));
-        this.app.elements['attention-minus-btn'].addEventListener('click', () => this.app.flowEngine.decrementAttentionStretch());
-        this.app.elements['attention-plus-btn'].addEventListener('click', () => this.app.flowEngine.incrementAttentionStretch());
+        if (this.app.elements['wake-now-btn']) this.app.elements['wake-now-btn'].addEventListener('click', () => this.app.flowEngine.markWakeNow());
+        if (this.app.elements['first-action-btn']) this.app.elements['first-action-btn'].addEventListener('click', () => this.app.flowEngine.markFirstActionNow());
+        if (this.app.elements['kill-switch-btn']) this.app.elements['kill-switch-btn'].addEventListener('click', () => this.app.flowEngine.runKillSwitch());
+        if (this.app.elements['flow-before-phone-check']) this.app.elements['flow-before-phone-check'].addEventListener('change', (e) => this.app.flowEngine.toggleFlowBeforePhone(e.target.checked));
+        if (this.app.elements['attention-minus-btn']) this.app.elements['attention-minus-btn'].addEventListener('click', () => this.app.flowEngine.decrementAttentionStretch());
+        if (this.app.elements['attention-plus-btn']) this.app.elements['attention-plus-btn'].addEventListener('click', () => this.app.flowEngine.incrementAttentionStretch());
         document.querySelectorAll('.war-mode-check').forEach(cb => {
           cb.addEventListener('change', (e) => {
             const key = e.target.getAttribute('data-key');
