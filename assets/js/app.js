@@ -1825,7 +1825,7 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
       }
 
       getCurrentFilter() {
-        return this.app.elements['prod-filter']?.value || 'productivity';
+        return 'productivity';
       }
 
       passesProductivityFilter(task, filter) {
@@ -1837,10 +1837,8 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         return true;
       }
 
-      getColorScheme(filter) {
-        if (filter === 'productivity') return { border: 'rgb(40, 180, 99)', fill: 'rgba(40, 180, 99, 0.16)' };
-        if (filter === 'logged_distraction' || filter === 'total_distraction') return { border: 'rgb(220, 53, 69)', fill: 'rgba(220, 53, 69, 0.16)' };
-        return { border: 'rgb(0,123,255)', fill: 'rgba(0,123,255,0.12)' };
+      getColorScheme() {
+        return { border: 'rgb(40, 180, 99)', fill: 'rgba(40, 180, 99, 0.16)' };
       }
 
       createCharts() {
@@ -1857,7 +1855,15 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
               active: { animation: { duration: 320 } },
               resize: { animation: { duration: 320 } }
             },
-            plugins: { legend: { display: false } },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                displayColors: false,
+                callbacks: {
+                  label: (context) => `Productivity: ${context.parsed.y}h`
+                }
+              }
+            },
             scales: { y: { beginAtZero: true, ticks: { callback: v => v + 'h' } } },
             elements: {
               point: {
@@ -1885,7 +1891,8 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         });
       }
 
-      getProductivityData(range='7d', filter='all') {
+      getProductivityData(range='7d', filter='productivity') {
+        const activeFilter = 'productivity';
         if (range === 'weekly') {
           const data = [];
           const labels = [];
@@ -1902,17 +1909,9 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
               const d = new Date(weekStart);
               d.setDate(weekStart.getDate() + i);
               const ds = this.app.getDateString(d);
-              if (filter === 'total_distraction') {
-                const logged = this.app.state.tasks
-                  .filter(t => t.date===ds && this.passesProductivityFilter(t, 'logged_distraction'))
-                  .reduce((a,t)=>a+t.duration,0);
-                const inferred = this.app.getInferredWasteMinutesForDate(ds, this.app.state.tasks);
-                weekMinutes += (logged + inferred);
-              } else {
-                weekMinutes += this.app.state.tasks
-                  .filter(t => t.date===ds && this.passesProductivityFilter(t, filter))
-                  .reduce((a,t)=>a+t.duration,0);
-              }
+              weekMinutes += this.app.state.tasks
+                .filter(t => t.date===ds && this.passesProductivityFilter(t, activeFilter))
+                .reduce((a,t)=>a+t.duration,0);
             }
 
             const weekAvgDailyHours = parseFloat(((weekMinutes / 7) / 60).toFixed(2));
@@ -1920,7 +1919,7 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
             data.push(weekAvgDailyHours);
           }
 
-          const colors = this.getColorScheme(filter);
+          const colors = this.getColorScheme();
           return {
             labels,
             datasets: [{
@@ -1943,21 +1942,13 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           d.setDate(today.getDate()-i);
           const ds=this.app.getDateString(d);
           let mins = 0;
-          if (filter === 'total_distraction') {
-            const logged = this.app.state.tasks
-              .filter(t => t.date===ds && this.passesProductivityFilter(t, 'logged_distraction'))
-              .reduce((a,t)=>a+t.duration,0);
-            const inferred = this.app.getInferredWasteMinutesForDate(ds, this.app.state.tasks);
-            mins = logged + inferred;
-          } else {
-            mins = this.app.state.tasks
-              .filter(t => t.date===ds && this.passesProductivityFilter(t, filter))
-              .reduce((a,t)=>a+t.duration,0);
-          }
+          mins = this.app.state.tasks
+            .filter(t => t.date===ds && this.passesProductivityFilter(t, activeFilter))
+            .reduce((a,t)=>a+t.duration,0);
           labels.push(d.toLocaleDateString('en-US',{month:'short',day:'numeric'}));
           data.push(parseFloat((mins/60).toFixed(2)));
         }
-        const colors = this.getColorScheme(filter);
+        const colors = this.getColorScheme();
         return {
           labels,
           datasets: [{
@@ -1981,19 +1972,11 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
       }
 
       getCurrentFilteredTotalMinutes() {
-        const filter = this.getCurrentFilter();
         const range = this.app.elements['prod-range'].value;
         const rangeDates = this.getRangeDates(range);
         const dateSet = new Set(rangeDates);
-        if (filter === 'total_distraction') {
-          const logged = this.app.state.tasks
-            .filter(t => dateSet.has(t.date) && this.passesProductivityFilter(t, 'logged_distraction'))
-            .reduce((sum, t) => sum + t.duration, 0);
-          const inferred = rangeDates.reduce((sum, dateStr) => sum + this.app.getInferredWasteMinutesForDate(dateStr, this.app.state.tasks), 0);
-          return logged + inferred;
-        }
         return this.app.state.tasks
-          .filter(t => dateSet.has(t.date) && this.passesProductivityFilter(t, filter))
+          .filter(t => dateSet.has(t.date) && this.passesProductivityFilter(t, 'productivity'))
           .reduce((sum, t) => sum + t.duration, 0);
       }
 
@@ -2037,7 +2020,6 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
 
       setupChartControls() {
         this.app.elements['prod-range'].addEventListener('change', () => this.updateCharts());
-        this.app.elements['prod-filter'].addEventListener('change', () => this.updateCharts());
         this.app.elements['sleep-range'].addEventListener('change', () => this.updateCharts());
       }
     }
