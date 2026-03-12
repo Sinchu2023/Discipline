@@ -2281,8 +2281,15 @@
               if (user) sessionStorage.removeItem(this.redirectLoginKey);
               this.renderAuthState();
               if (!user) return;
-              await this.bootstrapUserData();
-              await this.restoreTimerFromCloud();
+              try {
+                await this.bootstrapUserData();
+                await this.restoreTimerFromCloud();
+              } catch (error) {
+                console.error("Post-login bootstrap failed:", error);
+                alert(
+                  "Login succeeded, but cloud data sync failed. Check Firestore rules and browser console.",
+                );
+              }
             },
           );
         }
@@ -2295,14 +2302,32 @@
                 new window.FirebaseServices.GoogleAuthProvider();
               provider.setCustomParameters({ prompt: "select_account" });
               try {
-                sessionStorage.setItem(this.redirectLoginKey, "1");
-                await window.FirebaseServices.signInWithRedirect(
+                // Prefer popup first for faster auth completion and fewer redirect edge cases.
+                await window.FirebaseServices.signInWithPopup(
                   this.auth,
                   provider,
                 );
               } catch (error) {
-                sessionStorage.removeItem(this.redirectLoginKey);
-                this.handleAuthError(error);
+                const popupFallbackCodes = new Set([
+                  "auth/popup-blocked",
+                  "auth/popup-closed-by-user",
+                  "auth/cancelled-popup-request",
+                  "auth/operation-not-supported-in-this-environment",
+                ]);
+                if (!popupFallbackCodes.has(error?.code)) {
+                  this.handleAuthError(error);
+                  return;
+                }
+                try {
+                  sessionStorage.setItem(this.redirectLoginKey, "1");
+                  await window.FirebaseServices.signInWithRedirect(
+                    this.auth,
+                    provider,
+                  );
+                } catch (redirectError) {
+                  sessionStorage.removeItem(this.redirectLoginKey);
+                  this.handleAuthError(redirectError);
+                }
               }
             },
           );
