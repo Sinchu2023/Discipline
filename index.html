@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Discipline Tracker Pro</title>
     <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='48' x='8' font-size='48'%3E%E2%8F%B1%EF%B8%8F%3C/text%3E%3C/svg%3E"
+    />
+    <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
@@ -2224,6 +2228,12 @@
           return !!(this.auth && this.db && this.user);
         }
 
+        stopLeaderLoop() {
+          if (!this.leaderLoopIntervalId) return;
+          clearInterval(this.leaderLoopIntervalId);
+          this.leaderLoopIntervalId = null;
+        }
+
         installFirestoreInstrumentation() {
           if (!window.FirebaseServices || window.FirebaseServices.__instrumented) return;
           const wrap = (name) => {
@@ -2243,6 +2253,8 @@
           const current = localStorage.getItem(key);
           if (current === CONFIG.CLIENT_VERSION) return;
           localStorage.setItem(key, CONFIG.CLIENT_VERSION);
+          // Avoid interrupting Firebase redirect sign-in processing.
+          if (sessionStorage.getItem(this.redirectLoginKey)) return;
           const reloadFlag = `${key}_reloaded`;
           if (sessionStorage.getItem(reloadFlag)) return;
           sessionStorage.setItem(reloadFlag, "1");
@@ -2279,8 +2291,15 @@
               if (user) sessionStorage.removeItem(this.redirectLoginKey);
               this.renderAuthState();
               if (!user) return;
-              await this.bootstrapUserData();
-              await this.restoreTimerFromCloud();
+              try {
+                await this.bootstrapUserData();
+                await this.restoreTimerFromCloud();
+              } catch (error) {
+                console.error("Post-login bootstrap failed:", error);
+                alert(
+                  "Login succeeded, but cloud data sync failed. Check Firestore rules and browser console.",
+                );
+              }
             },
           );
         }
@@ -2293,14 +2312,32 @@
                 new window.FirebaseServices.GoogleAuthProvider();
               provider.setCustomParameters({ prompt: "select_account" });
               try {
-                sessionStorage.setItem(this.redirectLoginKey, "1");
-                await window.FirebaseServices.signInWithRedirect(
+                // Prefer popup first for faster auth completion and fewer redirect edge cases.
+                await window.FirebaseServices.signInWithPopup(
                   this.auth,
                   provider,
                 );
               } catch (error) {
-                sessionStorage.removeItem(this.redirectLoginKey);
-                this.handleAuthError(error);
+                const popupFallbackCodes = new Set([
+                  "auth/popup-blocked",
+                  "auth/popup-closed-by-user",
+                  "auth/cancelled-popup-request",
+                  "auth/operation-not-supported-in-this-environment",
+                ]);
+                if (!popupFallbackCodes.has(error?.code)) {
+                  this.handleAuthError(error);
+                  return;
+                }
+                try {
+                  sessionStorage.setItem(this.redirectLoginKey, "1");
+                  await window.FirebaseServices.signInWithRedirect(
+                    this.auth,
+                    provider,
+                  );
+                } catch (redirectError) {
+                  sessionStorage.removeItem(this.redirectLoginKey);
+                  this.handleAuthError(redirectError);
+                }
               }
             },
           );
@@ -2547,16 +2584,6 @@
           }
         }
 
-        timerDoc() {
-          return window.FirebaseServices.doc(
-            this.db,
-            "users",
-            this.user.uid,
-            "state",
-            "timer",
-          );
-        }
-
         async setTimerState(state) {
           if (!this.isReady) return;
           await window.FirebaseServices.setDoc(this.timerDoc(), state, {
@@ -2573,86 +2600,6 @@
           } catch (e) {
             console.warn("Failed to restore timer state", e);
           }
-        }
-
-        detachTimerListener() {
-          if (!this.timerUnsub) return;
-          this.timerUnsub();
-          this.timerUnsub = null;
-        }
-
-        async syncTaskUpsert(task) {
-          if (!this.isReady || !task?.id) return;
-          const normalized = this.app.normalizeTask(task);
-          await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
-            ...normalized,
-            updatedAt: Date.now(),
-          });
-        }
-
-        async syncTaskDelete(taskId) {
-          if (!this.isReady || !taskId) return;
-          await window.FirebaseServices.deleteDoc(this.taskDoc(taskId));
-        }
-
-        detachTimerListener() {
-          if (!this.timerUnsub) return;
-          this.timerUnsub();
-          this.timerUnsub = null;
-        }
-
-        async syncTaskUpsert(task) {
-          if (!this.isReady || !task?.id) return;
-          const normalized = this.app.normalizeTask(task);
-          await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
-            ...normalized,
-            updatedAt: Date.now(),
-          });
-        }
-
-        async syncTaskDelete(taskId) {
-          if (!this.isReady || !taskId) return;
-          await window.FirebaseServices.deleteDoc(this.taskDoc(taskId));
-        }
-
-        detachTimerListener() {
-          if (!this.timerUnsub) return;
-          this.timerUnsub();
-          this.timerUnsub = null;
-        }
-
-        async syncTaskUpsert(task) {
-          if (!this.isReady || !task?.id) return;
-          const normalized = this.app.normalizeTask(task);
-          await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
-            ...normalized,
-            updatedAt: Date.now(),
-          });
-        }
-
-        async syncTaskDelete(taskId) {
-          if (!this.isReady || !taskId) return;
-          await window.FirebaseServices.deleteDoc(this.taskDoc(taskId));
-        }
-
-        detachTimerListener() {
-          if (!this.timerUnsub) return;
-          this.timerUnsub();
-          this.timerUnsub = null;
-        }
-
-        async syncTaskUpsert(task) {
-          if (!this.isReady || !task?.id) return;
-          const normalized = this.app.normalizeTask(task);
-          await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
-            ...normalized,
-            updatedAt: Date.now(),
-          });
-        }
-
-        async syncTaskDelete(taskId) {
-          if (!this.isReady || !taskId) return;
-          await window.FirebaseServices.deleteDoc(this.taskDoc(taskId));
         }
 
         detachTimerListener() {
@@ -6307,6 +6254,8 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         getDoc,
         getDocs,
         setDoc,
+        collection,
+        deleteDoc,
       } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
       const firebaseConfig = {
@@ -6345,6 +6294,8 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           getDoc,
           getDocs,
           setDoc,
+          collection,
+          deleteDoc,
         };
       }
     </script>
