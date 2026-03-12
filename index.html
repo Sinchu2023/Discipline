@@ -2293,25 +2293,13 @@
                 new window.FirebaseServices.GoogleAuthProvider();
               provider.setCustomParameters({ prompt: "select_account" });
               try {
-                await window.FirebaseServices.signInWithPopup(
+                sessionStorage.setItem(this.redirectLoginKey, "1");
+                await window.FirebaseServices.signInWithRedirect(
                   this.auth,
                   provider,
                 );
               } catch (error) {
-                if (error?.code === "auth/popup-blocked") {
-                  try {
-                    sessionStorage.setItem(this.redirectLoginKey, "1");
-                    await window.FirebaseServices.signInWithRedirect(
-                      this.auth,
-                      provider,
-                    );
-                    return;
-                  } catch (redirectError) {
-                    sessionStorage.removeItem(this.redirectLoginKey);
-                    this.handleAuthError(redirectError);
-                    return;
-                  }
-                }
+                sessionStorage.removeItem(this.redirectLoginKey);
                 this.handleAuthError(error);
               }
             },
