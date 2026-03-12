@@ -2223,13 +2223,6 @@
           this.user = null;
           this.redirectLoginKey = "discipline_google_redirect_started";
           this.activeTimerTaskId = "__active_timer__";
-          this.timerUnsub = null;
-          this.tasksUnsub = null;
-          // Defensive bindings so auth callbacks never fail even under stale/cached runtimes.
-          this.detachTimerListener = this.detachTimerListener.bind(this);
-          this.detachTasksListener = this.detachTasksListener.bind(this);
-          this.attachTimerListener = this.attachTimerListener.bind(this);
-          this.attachTasksListener = this.attachTasksListener.bind(this);
         }
 
         get isReady() {
@@ -2294,8 +2287,8 @@
             this.auth,
             async (user) => {
               this.stopLeaderLoop();
-              this.detachTimerListener?.();
-              this.detachTasksListener?.();
+              this.detachTimerListener();
+              this.detachTasksListener();
               this.user = user || null;
               if (user) sessionStorage.removeItem(this.redirectLoginKey);
               this.renderAuthState();
@@ -2303,8 +2296,6 @@
               try {
                 await this.bootstrapUserData();
                 await this.restoreTimerFromCloud();
-                this.attachTimerListener?.();
-                this.attachTasksListener?.();
               } catch (error) {
                 console.error("Post-login bootstrap failed:", error);
                 alert(
@@ -2325,15 +2316,11 @@
               // Redirect is more reliable in browsers with strict popup/COOP policies.
               const useRedirectPreferred = true;
               try {
-                if (useRedirectPreferred) {
-                  sessionStorage.setItem(this.redirectLoginKey, "1");
-                  await window.FirebaseServices.signInWithRedirect(
-                    this.auth,
-                    provider,
-                  );
-                  return;
-                }
-                await window.FirebaseServices.signInWithPopup(this.auth, provider);
+                // Prefer popup first for faster auth completion and fewer redirect edge cases.
+                await window.FirebaseServices.signInWithPopup(
+                  this.auth,
+                  provider,
+                );
               } catch (error) {
                 const popupFallbackCodes = new Set([
                   "auth/popup-blocked",
@@ -2341,22 +2328,7 @@
                   "auth/cancelled-popup-request",
                   "auth/operation-not-supported-in-this-environment",
                 ]);
-                const redirectFallbackCodes = new Set([
-                  "auth/network-request-failed",
-                  "auth/internal-error",
-                  "auth/timeout",
-                ]);
-                if (useRedirectPreferred && redirectFallbackCodes.has(error?.code)) {
-                  try {
-                    await window.FirebaseServices.signInWithPopup(this.auth, provider);
-                    return;
-                  } catch (popupError) {
-                    this.handleAuthError(popupError);
-                    return;
-                  }
-                }
-                if (!popupFallbackCodes.has(error?.code) || useRedirectPreferred) {
-                  sessionStorage.removeItem(this.redirectLoginKey);
+                if (!popupFallbackCodes.has(error?.code)) {
                   this.handleAuthError(error);
                   return;
                 }
@@ -2560,7 +2532,7 @@
         async hydrateTasksFromCloudIfNeeded() {
           if (!this.isReady) return;
           const tasksSnap = await window.FirebaseServices.getDocs(this.tasksCollection());
-          const cloudTasks = tasksSnap.docs
+          this.app.state.tasks = tasksSnap.docs
             .filter((d) => d.id !== this.activeTimerTaskId)
             .map((d) => this.app.normalizeTask({ id: d.id, ...(d.data() || {}) }))
             .sort((a, b) => a.startTime - b.startTime);
@@ -2647,50 +2619,6 @@
           }
         }
 
-        attachTimerListener() {
-          if (!this.isReady) return;
-          this.detachTimerListener();
-          this.timerUnsub = window.FirebaseServices.onSnapshot(
-            this.activeTimerDoc(),
-            (snap) => {
-              this.app.stopwatch.applyRemoteTimerState(snap.exists() ? snap.data() : null);
-            },
-            (error) => {
-              console.warn("Timer realtime listener failed", error);
-            },
-          );
-        }
-
-        attachTasksListener() {
-          if (!this.isReady) return;
-          this.detachTasksListener();
-          this.tasksUnsub = window.FirebaseServices.onSnapshot(
-            this.tasksCollection(),
-            (snapshot) => {
-              const changes = snapshot
-                .docChanges()
-                .filter((change) => change.doc.id !== this.activeTimerTaskId)
-                .filter((change) => !change.doc.metadata?.hasPendingWrites)
-                .map((change) => ({
-                  type: change.type,
-                  id: change.doc.id,
-                  data: change.doc.data() || {},
-                }));
-              if (!changes.length) return;
-              this.app.taskManager.applyRemoteTaskChanges(changes);
-            },
-            (error) => {
-              console.warn("Tasks realtime listener failed", error);
-            },
-          );
-        }
-
-        detachTasksListener() {
-          if (!this.tasksUnsub) return;
-          this.tasksUnsub();
-          this.tasksUnsub = null;
-        }
-
         detachTimerListener() {
           if (!this.timerUnsub) return;
           this.timerUnsub();
@@ -2699,7 +2627,6 @@
 
         async syncTaskUpsert(task) {
           if (!this.isReady || !task?.id) return;
-          if (String(task.id) === this.activeTimerTaskId) return;
           const normalized = this.app.normalizeTask(task);
           await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
             ...normalized,
