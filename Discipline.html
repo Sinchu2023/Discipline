@@ -1584,13 +1584,6 @@ const CATEGORY_DEFINITIONS = {
         this.user = null;
         this.missionUnsub = null;
         this.isApplyingRemoteMission = false;
-        this.pendingPatch = {};
-        this.flushTimer = null;
-        this.writeWindowStartedAt = 0;
-        this.writeCountInWindow = 0;
-        this.lastMissionWriteAt = 0;
-        this.lastRemoteMissionSignature = '';
-        this.lastSnapshotAt = 0;
       }
 
       get isReady() { return !!(this.auth && this.db && this.user); }
@@ -1671,7 +1664,7 @@ const CATEGORY_DEFINITIONS = {
         }
 
         const data = snap.data() || {};
-        if (Array.isArray(data.tasks)) this.app.state.tasks = data.tasks.slice(-CONFIG.FIREBASE_PROTECTION.MAX_TASKS_SYNC).map(t => this.app.normalizeTask(t));
+        if (Array.isArray(data.tasks)) this.app.state.tasks = data.tasks.map(t => this.app.normalizeTask(t));
         if (Array.isArray(data.favorites)) this.app.state.favorites = data.favorites;
         if (data.roadmap && this.app.trainerEngine?.state) this.app.trainerEngine.state.roadmap = data.roadmap;
         if (data.flowProtocol) this.app.flowEngine.state = data.flowProtocol;
@@ -1684,95 +1677,24 @@ const CATEGORY_DEFINITIONS = {
         this.app.flowEngine.refresh();
       }
 
-
-      sanitizeText(value, maxLen = CONFIG.FIREBASE_PROTECTION.MAX_TEXT_LEN) {
-        return String(value || '').replace(/[<>]/g, '').slice(0, maxLen);
-      }
-
-      sanitizeTask(task) {
-        const normalized = this.app.normalizeTask(task || {});
-        return {
-          ...normalized,
-          description: this.sanitizeText(normalized.description, CONFIG.FIREBASE_PROTECTION.MAX_TEXT_LEN),
-          subcategory: this.sanitizeText(normalized.subcategory, 60),
-          category: this.sanitizeText(normalized.category, 50),
-          missionTopic: this.sanitizeText(normalized.missionTopic, 120),
-          missionType: this.sanitizeText(normalized.missionType, 40)
-        };
-      }
-
-      getSafePatch(patch) {
-        const safe = {};
-        if (patch.tasks) safe.tasks = (Array.isArray(patch.tasks) ? patch.tasks : []).slice(-CONFIG.FIREBASE_PROTECTION.MAX_TASKS_SYNC).map(t => this.sanitizeTask(t));
-        if (patch.favorites) safe.favorites = (Array.isArray(patch.favorites) ? patch.favorites : []).slice(-CONFIG.FIREBASE_PROTECTION.MAX_FAVORITES_SYNC);
-        if (patch.roadmap) safe.roadmap = patch.roadmap;
-        if (patch.flowProtocol) safe.flowProtocol = patch.flowProtocol;
-        if (patch.trainerState) safe.trainerState = patch.trainerState;
-        if (Number.isFinite(patch.shadowAvg)) safe.shadowAvg = patch.shadowAvg;
-        if (patch.missionState) {
-          safe.missionState = {
-            mission: this.sanitizeText(patch.missionState.mission, 120),
-            status: patch.missionState.status === 'running' ? 'running' : 'paused',
-            startTime: Number(patch.missionState.startTime) || null
-          };
-        }
-        if (patch.revision) {
-          safe.revision = {
-            status: ['pending', 'running', 'completed'].includes(patch.revision.status) ? patch.revision.status : 'pending',
-            timeSpent: Math.max(0, Number(patch.revision.timeSpent || 0))
-          };
-        }
-        return safe;
-      }
-
-      canWriteNow() {
-        const now = Date.now();
-        if (!this.writeWindowStartedAt || now - this.writeWindowStartedAt > 60000) {
-          this.writeWindowStartedAt = now;
-          this.writeCountInWindow = 0;
-        }
-        if (this.writeCountInWindow >= CONFIG.FIREBASE_PROTECTION.MAX_WRITES_PER_MINUTE) return false;
-        this.writeCountInWindow += 1;
-        return true;
-      }
-
-      queuePatch(patch) {
+      async writePatch(patch) {
         if (!this.isReady) return;
-        const next = this.getSafePatch(patch);
-        this.pendingPatch = { ...this.pendingPatch, ...next };
-        if (this.flushTimer) clearTimeout(this.flushTimer);
-        this.flushTimer = setTimeout(() => this.flushPendingPatch(), CONFIG.FIREBASE_PROTECTION.WRITE_DEBOUNCE_MS);
-      }
-
-      async flushPendingPatch() {
-        if (!this.isReady) return;
-        const patch = this.pendingPatch;
-        this.pendingPatch = {};
-        if (!Object.keys(patch).length) return;
-        if (!this.canWriteNow()) {
-          console.warn('Firebase write budget exceeded; dropping this sync tick to protect quota.');
-          return;
-        }
         try {
           await window.FirebaseServices.setDoc(this.userDoc(), { ...patch, updatedAt: Date.now() }, { merge: true });
         } catch (e) { console.warn('firebase write failed', e); }
       }
 
-      async writePatch(patch) {
-        this.queuePatch(patch);
-      }
-
       async syncByStorageKey(key, value) {
         if (!this.isReady) return;
         const patch = {};
-        if (key === CONFIG.STORAGE_KEYS.TASKS) patch.tasks = Array.isArray(value) ? value.slice(-CONFIG.FIREBASE_PROTECTION.MAX_TASKS_SYNC) : [];
-        if (key === CONFIG.STORAGE_KEYS.FAVORITES) patch.favorites = Array.isArray(value) ? value.slice(-CONFIG.FIREBASE_PROTECTION.MAX_FAVORITES_SYNC) : [];
+        if (key === CONFIG.STORAGE_KEYS.TASKS) patch.tasks = value || [];
+        if (key === CONFIG.STORAGE_KEYS.FAVORITES) patch.favorites = value || [];
         if (key === CONFIG.STORAGE_KEYS.ROADMAP_STATE) patch.roadmap = value || {};
         if (key === CONFIG.STORAGE_KEYS.FLOW_PROTOCOL) patch.flowProtocol = value || { byDate: {} };
         if (key === CONFIG.STORAGE_KEYS.TRAINER_STATE) patch.trainerState = value || {};
         if (key === CONFIG.STORAGE_KEYS.SHADOW_AVG) patch.shadowAvg = Number(value) || 0;
         if (key === CONFIG.STORAGE_KEYS.ACTIVE_TASK) {
-          const mission = this.sanitizeText(value?.missionTopic || value?.description?.replace(/^Topic:\s*/i, '') || value?.name || '', 120);
+          const mission = value?.missionTopic || value?.description?.replace(/^Topic:\s*/i, '') || value?.name || '';
           patch.missionState = {
             mission,
             status: value ? 'running' : 'paused',
@@ -1786,17 +1708,10 @@ const CATEGORY_DEFINITIONS = {
       }
 
       async setMissionRunning(mission, startTime) {
-        const now = Date.now();
-        if (now - this.lastMissionWriteAt < CONFIG.FIREBASE_PROTECTION.MIN_MISSION_UPDATE_INTERVAL_MS) return;
-        this.lastMissionWriteAt = now;
-        const safeMission = this.sanitizeText(mission, 120);
-        await this.writePatch({ missionState: { mission: safeMission, status: 'running', startTime }, revision: String(safeMission).toLowerCase().includes('revision') ? { status: 'running' } : undefined });
+        await this.writePatch({ missionState: { mission, status: 'running', startTime }, revision: String(mission).toLowerCase().includes('revision') ? { status: 'running' } : undefined });
       }
 
       async setMissionPaused() {
-        const now = Date.now();
-        if (now - this.lastMissionWriteAt < 600) return;
-        this.lastMissionWriteAt = now;
         await this.writePatch({ missionState: { status: 'paused' } });
       }
 
@@ -1804,27 +1719,17 @@ const CATEGORY_DEFINITIONS = {
         if (!this.isReady) return;
         if (this.missionUnsub) this.missionUnsub();
         this.missionUnsub = window.FirebaseServices.onSnapshot(this.userDoc(), (snap) => {
-          const now = Date.now();
-          if (now - this.lastSnapshotAt < 300) return;
-          this.lastSnapshotAt = now;
-
           const data = snap.data() || {};
           const m = data.missionState || {};
           if (!m.status) return;
-
-          const missionName = this.sanitizeText(m.mission || 'Mission', 120);
-          const signature = `${m.status}|${Number(m.startTime) || 0}|${missionName}`;
-          if (signature === this.lastRemoteMissionSignature) return;
-          this.lastRemoteMissionSignature = signature;
-
           if (m.status === 'running' && m.startTime && !this.app.stopwatch.isRunning) {
             this.isApplyingRemoteMission = true;
             this.app.stopwatch.resumeRemoteMission({
-              name: missionName,
+              name: m.mission || 'Mission',
               category: 'Productive Work',
               subcategory: 'Analog',
-              description: `Topic: ${missionName}`,
-              missionTopic: missionName,
+              description: `Topic: ${m.mission || 'Mission'}`,
+              missionTopic: m.mission || 'Mission',
               missionType: 'learning',
               startTime: Number(m.startTime)
             });
@@ -3366,22 +3271,27 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
 
       getDailyMissionTasks() {
         const active = this.getActiveRoadmapDay();
-        const learningTasks = [];
+        const learning = [];
 
         if (active) {
           const moduleDays = active.module.days;
           for (let i = 0; i <= active.dayIndex; i++) {
             const day = moduleDays[i];
-            const topic = (day.text || '').split('\n')[0].trim();
-            const progress = this.getTopicProgress(topic);
-            const done = progress.minutes >= progress.threshold;
-            learningTasks.push({ type: 'learning', topic, progress, done });
+            if (!day.completed) learning.push(day);
           }
+          if (!learning.length) learning.push(active.day);
         }
+
+        const learningTasks = learning.slice(0, 2).map(day => {
+          const topic = (day.text || '').split('\n')[0].trim();
+          const progress = this.getTopicProgress(topic);
+          const done = progress.minutes >= progress.threshold;
+          return { type: 'learning', topic, progress, done };
+        });
 
         const projectProgress = this.getTopicProgress('Project Work');
         const projectDone = projectProgress.minutes >= this.getThresholdForTopic('Project Work');
-        const allLearningDone = learningTasks.length > 0 ? learningTasks.every(t => t.done) : true;
+        const allLearningDone = (learningTasks.length > 0 ? learningTasks.every(t => t.done) : true) && projectDone;
         const revisionProgress = this.getTopicProgress('Revision');
         const revisionThreshold = this.getThresholdForTopic('Revision');
         const revisionDone = revisionProgress.minutes >= revisionThreshold;
@@ -3389,8 +3299,8 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         return [
           ...learningTasks,
           { type: 'project', topic: 'Project Work', progress: projectProgress, done: projectDone },
-          { type: 'revision', topic: 'Revision', progress: revisionProgress, done: revisionDone, active: allLearningDone && projectDone }
-        ];
+          { type: 'revision', topic: 'Revision', progress: revisionProgress, done: revisionDone, active: allLearningDone }
+        ].slice(0, 4);
       }
 
       startMissionTask(index) {
@@ -3415,6 +3325,80 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           missionType: item.type,
           sourceAgnostic: true
         });
+      }
+
+      startMissionTask(index) {
+        const tasks = this.getDailyMissionTasks();
+        const taskIds = ['mission-task-1', 'mission-task-2', 'mission-task-3', 'mission-task-4'];
+        const valueIds = ['goal-nptel', 'goal-yt', 'goal-project', 'goal-revision'];
+
+        taskIds.forEach((id, idx) => {
+          const labelEl = this.app.elements[id];
+          const valueEl = this.app.elements[valueIds[idx]];
+          const item = tasks[idx];
+          if (!labelEl || !valueEl || !item) return;
+
+          labelEl.textContent = `${idx + 1}. ${item.topic}`;
+          const threshold = item.progress?.threshold || this.getThresholdForTopic(item.topic);
+
+          if (item.type === 'revision' && !item.active) {
+            valueEl.textContent = 'Pending';
+            valueEl.classList.remove('shadow-goal-done');
+          } else {
+            valueEl.textContent = `${this.app.formatDuration(item.progress?.minutes || 0)} / ${this.app.formatDuration(threshold)}`;
+            valueEl.classList.toggle('shadow-goal-done', !!item.done);
+          }
+        });
+
+        document.querySelectorAll('.mission-start-btn').forEach(btn => {
+          const idx = Number(btn.getAttribute('data-mission-index') || -1);
+          const item = tasks[idx];
+          btn.disabled = !item || (item.type === 'revision' && !item.active);
+        });
+
+        const active = this.getActiveRoadmapDay();
+        if (active) {
+          const topic = (active.day.text || '').split('\n')[0].trim();
+          const progress = this.getTopicProgress(topic);
+          if (!active.day.completed && progress.minutes >= this.getThresholdForTopic(topic)) {
+            active.day.completed = true;
+            this.app.saveToStorage(CONFIG.STORAGE_KEYS.ROADMAP_STATE, this.state.roadmap);
+            this.normalizeRoadmapDays();
+          }
+        }
+      }
+
+      syncMissionFromRoadmap() {
+        const tasks = this.getDailyMissionTasks();
+        const container = document.querySelector('.shadow-goal-list');
+        if (!container) return;
+
+        const taskIds = ['mission-task-1', 'mission-task-2', 'mission-task-3', 'mission-task-4'];
+        const valueIds = ['goal-nptel', 'goal-yt', 'goal-project', 'goal-revision'];
+
+        container.innerHTML = tasks.map((item, idx) => {
+          const threshold = item.progress?.threshold || this.getThresholdForTopic(item.topic);
+          const done = !!item.done;
+          const disabled = item.type === 'revision' && !item.active;
+          const valueText = disabled
+            ? 'Pending'
+            : `${this.app.formatDuration(item.progress?.minutes || 0)} / ${this.app.formatDuration(threshold)}`;
+          const labelId = idx < 4 ? ` id="${taskIds[idx]}"` : '';
+          const valueId = idx < 4 ? ` id="${valueIds[idx]}"` : '';
+          const doneCls = done ? ' shadow-goal-done' : '';
+          return `<div class="shadow-goal-item"><span${labelId}>${idx + 1}. ${this.escapeHtml(item.topic)}</span><button class="btn btn-secondary mission-start-btn" data-mission-index="${idx}" ${disabled ? 'disabled' : ''} title="Start mission task">⭐</button><strong${valueId} class="${doneCls.trim()}">${this.escapeHtml(valueText)}</strong></div>`;
+        }).join('');
+
+        const active = this.getActiveRoadmapDay();
+        if (active) {
+          const topic = (active.day.text || '').split('\n')[0].trim();
+          const progress = this.getTopicProgress(topic);
+          if (!active.day.completed && progress.minutes >= this.getThresholdForTopic(topic)) {
+            active.day.completed = true;
+            this.app.saveToStorage(CONFIG.STORAGE_KEYS.ROADMAP_STATE, this.state.roadmap);
+            this.normalizeRoadmapDays();
+          }
+        }
       }
 
       syncMissionFromRoadmap() {
@@ -3977,13 +3961,11 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         this.app.elements['sleep-btn'].addEventListener('click', () => this.app.stopwatch.startSleep());
         this.app.elements['add-favorite'].addEventListener('click', () => this.app.taskManager.addFavorite());
         this.app.elements['task-input'].addEventListener('keypress', e => { if (e.key === 'Enter' && !this.app.stopwatch.isRunning) this.app.stopwatch.start(); });
-        document.addEventListener('click', (e) => {
-          const btn = e.target.closest('.mission-start-btn');
-          if (!btn) return;
-          const idx = Number(btn.getAttribute('data-mission-index') || -1);
+        document.querySelectorAll('.mission-start-btn').forEach(btn => btn.addEventListener('click', (e) => {
+          const idx = Number(e.currentTarget.getAttribute('data-mission-index') || -1);
           if (idx < 0) return;
           this.app.trainerEngine.startMissionTask(idx);
-        });
+        }));
         this.app.elements['view-report'].addEventListener('click', () => this.app.uiManager.showReport());
         this.app.elements['open-trainer'].addEventListener('click', () => this.app.trainerEngine.showWindow());
         this.app.elements['export-data'].addEventListener('click', () => this.app.uiManager.exportData());
