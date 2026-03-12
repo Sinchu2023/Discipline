@@ -2276,6 +2276,7 @@
               this.stopLeaderLoop();
               this.detachTimerListener();
               this.user = user || null;
+              if (user) sessionStorage.removeItem(this.redirectLoginKey);
               this.renderAuthState();
               if (!user) return;
               await this.bootstrapUserData();
