@@ -1387,6 +1387,14 @@
       },
       MOTIVATION_INTERVAL: 15000,
       CHART_RANGES: { '7d': 7, '30d': 30, '3m': 90, '6m': 180, '1y': 365 },
+      FIREBASE_PROTECTION: {
+        MAX_WRITES_PER_MINUTE: 60,
+        WRITE_DEBOUNCE_MS: 1200,
+        MAX_TASKS_SYNC: 2000,
+        MAX_FAVORITES_SYNC: 200,
+        MAX_TEXT_LEN: 180,
+        MIN_MISSION_UPDATE_INTERVAL_MS: 2500
+      },
       DAILY_GOALS: [
         { id: 'nptel', label: 'NPTEL', minutesTarget: 120, sessionsTarget: 2, keywords: ['nptel'] },
         { id: 'yt', label: 'YouTube Learning', minutesTarget: 120, sessionsTarget: 2, keywords: ['youtube', 'yt'] },
@@ -3347,6 +3355,39 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           const item = tasks[idx];
           btn.disabled = !item || (item.type === 'revision' && !item.active);
         });
+
+        const active = this.getActiveRoadmapDay();
+        if (active) {
+          const topic = (active.day.text || '').split('\n')[0].trim();
+          const progress = this.getTopicProgress(topic);
+          if (!active.day.completed && progress.minutes >= this.getThresholdForTopic(topic)) {
+            active.day.completed = true;
+            this.app.saveToStorage(CONFIG.STORAGE_KEYS.ROADMAP_STATE, this.state.roadmap);
+            this.normalizeRoadmapDays();
+          }
+        }
+      }
+
+      syncMissionFromRoadmap() {
+        const tasks = this.getDailyMissionTasks();
+        const container = document.querySelector('.shadow-goal-list');
+        if (!container) return;
+
+        const taskIds = ['mission-task-1', 'mission-task-2', 'mission-task-3', 'mission-task-4'];
+        const valueIds = ['goal-nptel', 'goal-yt', 'goal-project', 'goal-revision'];
+
+        container.innerHTML = tasks.map((item, idx) => {
+          const threshold = item.progress?.threshold || this.getThresholdForTopic(item.topic);
+          const done = !!item.done;
+          const disabled = item.type === 'revision' && !item.active;
+          const valueText = disabled
+            ? 'Pending'
+            : `${this.app.formatDuration(item.progress?.minutes || 0)} / ${this.app.formatDuration(threshold)}`;
+          const labelId = idx < 4 ? ` id="${taskIds[idx]}"` : '';
+          const valueId = idx < 4 ? ` id="${valueIds[idx]}"` : '';
+          const doneCls = done ? ' shadow-goal-done' : '';
+          return `<div class="shadow-goal-item"><span${labelId}>${idx + 1}. ${this.escapeHtml(item.topic)}</span><button class="btn btn-secondary mission-start-btn" data-mission-index="${idx}" ${disabled ? 'disabled' : ''} title="Start mission task">⭐</button><strong${valueId} class="${doneCls.trim()}">${this.escapeHtml(valueText)}</strong></div>`;
+        }).join('');
 
         const active = this.getActiveRoadmapDay();
         if (active) {
