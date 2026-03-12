@@ -2528,12 +2528,13 @@
         }
 
         async hydrateTasksFromCloudIfNeeded() {
-          if (!this.isReady || this.app.state.tasks.length) return;
+          if (!this.isReady) return;
           const tasksSnap = await window.FirebaseServices.getDocs(this.tasksCollection());
           this.app.state.tasks = tasksSnap.docs
             .filter((d) => d.id !== this.activeTimerTaskId)
             .map((d) => this.app.normalizeTask({ id: d.id, ...(d.data() || {}) }))
             .sort((a, b) => a.startTime - b.startTime);
+          this.app.state.tasks = cloudTasks;
           this.app.saveToStorage(CONFIG.STORAGE_KEYS.TASKS, this.app.state.tasks);
         }
 
