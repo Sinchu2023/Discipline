@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Discipline Tracker Pro</title>
     <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='48' x='8' font-size='48'%3E%E2%8F%B1%EF%B8%8F%3C/text%3E%3C/svg%3E"
+    />
+    <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
@@ -2218,10 +2222,17 @@
           this.db = null;
           this.user = null;
           this.redirectLoginKey = "discipline_google_redirect_started";
+          this.activeTimerTaskId = "__active_timer__";
         }
 
         get isReady() {
           return !!(this.auth && this.db && this.user);
+        }
+
+        stopLeaderLoop() {
+          if (!this.leaderLoopIntervalId) return;
+          clearInterval(this.leaderLoopIntervalId);
+          this.leaderLoopIntervalId = null;
         }
 
         installFirestoreInstrumentation() {
@@ -2243,6 +2254,8 @@
           const current = localStorage.getItem(key);
           if (current === CONFIG.CLIENT_VERSION) return;
           localStorage.setItem(key, CONFIG.CLIENT_VERSION);
+          // Avoid interrupting Firebase redirect sign-in processing.
+          if (sessionStorage.getItem(this.redirectLoginKey)) return;
           const reloadFlag = `${key}_reloaded`;
           if (sessionStorage.getItem(reloadFlag)) return;
           sessionStorage.setItem(reloadFlag, "1");
@@ -2274,13 +2287,23 @@
             this.auth,
             async (user) => {
               this.stopLeaderLoop();
-              this.detachTimerListener();
+              this.detachTimerListener?.();
+              this.detachTasksListener?.();
               this.user = user || null;
               if (user) sessionStorage.removeItem(this.redirectLoginKey);
               this.renderAuthState();
               if (!user) return;
-              await this.bootstrapUserData();
-              await this.restoreTimerFromCloud();
+              try {
+                await this.bootstrapUserData();
+                await this.restoreTimerFromCloud();
+                this.attachTimerListener?.();
+                this.attachTasksListener?.();
+              } catch (error) {
+                console.error("Post-login bootstrap failed:", error);
+                alert(
+                  "Login succeeded, but cloud data sync failed. Check Firestore rules and browser console.",
+                );
+              }
             },
           );
         }
@@ -2293,14 +2316,32 @@
                 new window.FirebaseServices.GoogleAuthProvider();
               provider.setCustomParameters({ prompt: "select_account" });
               try {
-                sessionStorage.setItem(this.redirectLoginKey, "1");
-                await window.FirebaseServices.signInWithRedirect(
+                // Prefer popup first for faster auth completion and fewer redirect edge cases.
+                await window.FirebaseServices.signInWithPopup(
                   this.auth,
                   provider,
                 );
               } catch (error) {
-                sessionStorage.removeItem(this.redirectLoginKey);
-                this.handleAuthError(error);
+                const popupFallbackCodes = new Set([
+                  "auth/popup-blocked",
+                  "auth/popup-closed-by-user",
+                  "auth/cancelled-popup-request",
+                  "auth/operation-not-supported-in-this-environment",
+                ]);
+                if (!popupFallbackCodes.has(error?.code)) {
+                  this.handleAuthError(error);
+                  return;
+                }
+                try {
+                  sessionStorage.setItem(this.redirectLoginKey, "1");
+                  await window.FirebaseServices.signInWithRedirect(
+                    this.auth,
+                    provider,
+                  );
+                } catch (redirectError) {
+                  sessionStorage.removeItem(this.redirectLoginKey);
+                  this.handleAuthError(redirectError);
+                }
               }
             },
           );
@@ -2418,6 +2459,10 @@
           );
         }
 
+        activeTimerDoc() {
+          return this.taskDoc(this.activeTimerTaskId);
+        }
+
         favoritesCollection() {
           return window.FirebaseServices.collection(
             this.db,
@@ -2485,11 +2530,13 @@
         }
 
         async hydrateTasksFromCloudIfNeeded() {
-          if (!this.isReady || this.app.state.tasks.length) return;
+          if (!this.isReady) return;
           const tasksSnap = await window.FirebaseServices.getDocs(this.tasksCollection());
-          this.app.state.tasks = tasksSnap.docs
+          const cloudTasks = tasksSnap.docs
+            .filter((d) => d.id !== this.activeTimerTaskId)
             .map((d) => this.app.normalizeTask({ id: d.id, ...(d.data() || {}) }))
             .sort((a, b) => a.startTime - b.startTime);
+          this.app.state.tasks = cloudTasks;
           this.app.saveToStorage(CONFIG.STORAGE_KEYS.TASKS, this.app.state.tasks);
         }
 
@@ -2547,19 +2594,16 @@
           }
         }
 
-        timerDoc() {
-          return window.FirebaseServices.doc(
-            this.db,
-            "users",
-            this.user.uid,
-            "state",
-            "timer",
-          );
-        }
-
         async setTimerState(state) {
           if (!this.isReady) return;
-          await window.FirebaseServices.setDoc(this.timerDoc(), state, {
+          const running = state?.status === "running";
+          await window.FirebaseServices.setDoc(this.activeTimerDoc(), {
+            running,
+            startTime: running ? Number(state?.startTime || Date.now()) : null,
+            elapsed: Number(state?.elapsedBeforePause || 0),
+            activeTask: state?.activeTask || null,
+            lastUpdate: Date.now(),
+          }, {
             merge: true,
           });
         }
@@ -2567,72 +2611,56 @@
         async restoreTimerFromCloud() {
           if (!this.isReady) return;
           try {
-            const snap = await window.FirebaseServices.getDoc(this.timerDoc());
+            const snap = await window.FirebaseServices.getDoc(this.activeTimerDoc());
             const timerState = snap.exists() ? snap.data() : null;
-            this.app.stopwatch.restoreFromCloud(timerState);
+            this.app.stopwatch.applyRemoteTimerState(timerState);
           } catch (e) {
             console.warn("Failed to restore timer state", e);
           }
         }
 
-        detachTimerListener() {
-          if (!this.timerUnsub) return;
-          this.timerUnsub();
-          this.timerUnsub = null;
+        attachTimerListener() {
+          if (!this.isReady) return;
+          this.detachTimerListener();
+          this.timerUnsub = window.FirebaseServices.onSnapshot(
+            this.activeTimerDoc(),
+            (snap) => {
+              this.app.stopwatch.applyRemoteTimerState(snap.exists() ? snap.data() : null);
+            },
+            (error) => {
+              console.warn("Timer realtime listener failed", error);
+            },
+          );
         }
 
-        async syncTaskUpsert(task) {
-          if (!this.isReady || !task?.id) return;
-          const normalized = this.app.normalizeTask(task);
-          await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
-            ...normalized,
-            updatedAt: Date.now(),
-          });
+        attachTasksListener() {
+          if (!this.isReady) return;
+          this.detachTasksListener();
+          this.tasksUnsub = window.FirebaseServices.onSnapshot(
+            this.tasksCollection(),
+            (snapshot) => {
+              const changes = snapshot
+                .docChanges()
+                .filter((change) => change.doc.id !== this.activeTimerTaskId)
+                .filter((change) => !change.doc.metadata?.hasPendingWrites)
+                .map((change) => ({
+                  type: change.type,
+                  id: change.doc.id,
+                  data: change.doc.data() || {},
+                }));
+              if (!changes.length) return;
+              this.app.taskManager.applyRemoteTaskChanges(changes);
+            },
+            (error) => {
+              console.warn("Tasks realtime listener failed", error);
+            },
+          );
         }
 
-        async syncTaskDelete(taskId) {
-          if (!this.isReady || !taskId) return;
-          await window.FirebaseServices.deleteDoc(this.taskDoc(taskId));
-        }
-
-        detachTimerListener() {
-          if (!this.timerUnsub) return;
-          this.timerUnsub();
-          this.timerUnsub = null;
-        }
-
-        async syncTaskUpsert(task) {
-          if (!this.isReady || !task?.id) return;
-          const normalized = this.app.normalizeTask(task);
-          await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
-            ...normalized,
-            updatedAt: Date.now(),
-          });
-        }
-
-        async syncTaskDelete(taskId) {
-          if (!this.isReady || !taskId) return;
-          await window.FirebaseServices.deleteDoc(this.taskDoc(taskId));
-        }
-
-        detachTimerListener() {
-          if (!this.timerUnsub) return;
-          this.timerUnsub();
-          this.timerUnsub = null;
-        }
-
-        async syncTaskUpsert(task) {
-          if (!this.isReady || !task?.id) return;
-          const normalized = this.app.normalizeTask(task);
-          await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
-            ...normalized,
-            updatedAt: Date.now(),
-          });
-        }
-
-        async syncTaskDelete(taskId) {
-          if (!this.isReady || !taskId) return;
-          await window.FirebaseServices.deleteDoc(this.taskDoc(taskId));
+        detachTasksListener() {
+          if (!this.tasksUnsub) return;
+          this.tasksUnsub();
+          this.tasksUnsub = null;
         }
 
         detachTimerListener() {
@@ -2643,26 +2671,7 @@
 
         async syncTaskUpsert(task) {
           if (!this.isReady || !task?.id) return;
-          const normalized = this.app.normalizeTask(task);
-          await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
-            ...normalized,
-            updatedAt: Date.now(),
-          });
-        }
-
-        async syncTaskDelete(taskId) {
-          if (!this.isReady || !taskId) return;
-          await window.FirebaseServices.deleteDoc(this.taskDoc(taskId));
-        }
-
-        detachTimerListener() {
-          if (!this.timerUnsub) return;
-          this.timerUnsub();
-          this.timerUnsub = null;
-        }
-
-        async syncTaskUpsert(task) {
-          if (!this.isReady || !task?.id) return;
+          if (String(task.id) === this.activeTimerTaskId) return;
           const normalized = this.app.normalizeTask(task);
           await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
             ...normalized,
@@ -3105,6 +3114,7 @@
           this.elapsedBeforePause = 0;
           this.elapsedTime = 0;
           this.app.state.activeTask = {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             name: name || resolvedMeta.subcategory,
             startTime: this.startTime,
             ...resolvedMeta,
@@ -3144,7 +3154,7 @@
           this.isRunning = false;
           const endTime = Date.now();
           const entry = this.app.normalizeTask({
-            id: `${Date.now()}`,
+            id: this.app.state.activeTask?.id || `${Date.now()}`,
             ...this.app.state.activeTask,
             startTime: this.startTime,
             endTime,
@@ -3206,21 +3216,34 @@
           this.reset();
         }
 
-        restoreFromCloud(timerState) {
-          if (this.isRunning || !timerState || timerState.status !== "running")
+        applyRemoteTimerState(timerState) {
+          const running = !!timerState?.running;
+          if (running) {
+            const activeTask = timerState.activeTask;
+            const startTime = Number(timerState.startTime);
+            if (!activeTask || !startTime) return;
+            if (
+              this.isRunning &&
+              Number(this.startTime) === startTime &&
+              this.app.state.activeTask?.id === activeTask?.id
+            )
+              return;
+            this.resumeActiveTask({
+              ...activeTask,
+              startTime,
+              elapsedBeforePause: Number(timerState.elapsed || 0),
+            });
+            this.app.saveToStorage(CONFIG.STORAGE_KEYS.ACTIVE_TASK, {
+              ...activeTask,
+              startTime,
+            });
             return;
-          const activeTask = timerState.activeTask;
-          const startTime = Number(timerState.startTime);
-          if (!activeTask || !startTime) return;
-          this.resumeActiveTask({
-            ...activeTask,
-            startTime,
-            elapsedBeforePause: Number(timerState.elapsedBeforePause || 0),
-          });
-          this.app.saveToStorage(CONFIG.STORAGE_KEYS.ACTIVE_TASK, {
-            ...activeTask,
-            startTime,
-          });
+          }
+          this.stopFromRemote();
+        }
+
+        restoreFromCloud(timerState) {
+          this.applyRemoteTimerState(timerState);
         }
       }
       class TaskManager {
@@ -3238,16 +3261,47 @@
           this.app.state.tasks = [...map.values()].sort(
             (a, b) => a.startTime - b.startTime,
           );
-          incoming.forEach((t) => this.app.cloudManager?.syncTaskUpsert?.(t));
           this.app.saveToStorage(
             CONFIG.STORAGE_KEYS.TASKS,
             this.app.state.tasks,
           );
+          this.refreshViews();
+        }
+
+        refreshViews(updateStreakWithActivity = false) {
           this.updateStats();
           this.renderTasks();
           this.app.graphManager.updateCharts();
-          this.app.updateStreak();
+          this.app.updateStreak(updateStreakWithActivity);
         }
+
+        applyRemoteTaskChanges(changes) {
+          let changed = false;
+          const byId = new Map(this.app.state.tasks.map((t) => [String(t.id), t]));
+          changes.forEach((change) => {
+            const id = String(change.id);
+            if (change.type === "removed") {
+              if (byId.delete(id)) changed = true;
+              return;
+            }
+            const normalized = this.app.normalizeTask({ id, ...(change.data || {}) });
+            const existing = byId.get(id);
+            if (
+              existing &&
+              Number(existing.updatedAt || 0) >= Number(normalized.updatedAt || 0) &&
+              Number(existing.endTime || 0) === Number(normalized.endTime || 0) &&
+              Number(existing.duration || 0) === Number(normalized.duration || 0)
+            )
+              return;
+            byId.set(id, normalized);
+            changed = true;
+          });
+          if (!changed) return;
+          this.app.state.tasks = [...byId.values()].sort((a, b) => a.startTime - b.startTime);
+          this.app.saveToStorage(CONFIG.STORAGE_KEYS.TASKS, this.app.state.tasks);
+          this.refreshViews();
+        }
+
         addTask(task) {
           this.app.state.tasks.push(this.app.normalizeTask(task));
           this.app.saveToStorage(
@@ -3261,10 +3315,7 @@
             ts: Date.now(),
           });
           this.app.syncManager.flushQueue();
-          this.updateStats();
-          this.renderTasks();
-          this.app.graphManager.updateCharts();
-          this.app.updateStreak(true);
+          this.refreshViews(true);
         }
         deleteTask(taskId) {
           this.app.state.tasks = this.app.state.tasks.filter(
@@ -3280,10 +3331,7 @@
             id: taskId,
             ts: Date.now(),
           });
-          this.updateStats();
-          this.renderTasks();
-          this.app.graphManager.updateCharts();
-          this.app.updateStreak();
+          this.refreshViews();
         }
         updateStats() {
           const today = this.app.getDateString();
@@ -3404,10 +3452,7 @@
             ts: Date.now(),
           });
           this.app.syncManager.flushQueue();
-          this.updateStats();
-          this.renderTasks();
-          this.app.graphManager.updateCharts();
-          this.app.updateStreak();
+          this.refreshViews();
         }
         renderFavorites() {
           const container = this.app.elements["favorites-grid"];
@@ -6306,7 +6351,10 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         doc,
         getDoc,
         getDocs,
+        onSnapshot,
         setDoc,
+        collection,
+        deleteDoc,
       } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
       const firebaseConfig = {
@@ -6344,7 +6392,10 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           doc,
           getDoc,
           getDocs,
+          onSnapshot,
           setDoc,
+          collection,
+          deleteDoc,
         };
       }
     </script>
