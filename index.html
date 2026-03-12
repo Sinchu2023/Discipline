@@ -2296,8 +2296,6 @@
               try {
                 await this.bootstrapUserData();
                 await this.restoreTimerFromCloud();
-                this.attachTimerListener();
-                this.attachTasksListener();
               } catch (error) {
                 console.error("Post-login bootstrap failed:", error);
                 alert(
@@ -2618,50 +2616,6 @@
           }
         }
 
-        attachTimerListener() {
-          if (!this.isReady) return;
-          this.detachTimerListener();
-          this.timerUnsub = window.FirebaseServices.onSnapshot(
-            this.activeTimerDoc(),
-            (snap) => {
-              this.app.stopwatch.applyRemoteTimerState(snap.exists() ? snap.data() : null);
-            },
-            (error) => {
-              console.warn("Timer realtime listener failed", error);
-            },
-          );
-        }
-
-        attachTasksListener() {
-          if (!this.isReady) return;
-          this.detachTasksListener();
-          this.tasksUnsub = window.FirebaseServices.onSnapshot(
-            this.tasksCollection(),
-            (snapshot) => {
-              const changes = snapshot
-                .docChanges()
-                .filter((change) => change.doc.id !== this.activeTimerTaskId)
-                .filter((change) => !change.doc.metadata?.hasPendingWrites)
-                .map((change) => ({
-                  type: change.type,
-                  id: change.doc.id,
-                  data: change.doc.data() || {},
-                }));
-              if (!changes.length) return;
-              this.app.taskManager.applyRemoteTaskChanges(changes);
-            },
-            (error) => {
-              console.warn("Tasks realtime listener failed", error);
-            },
-          );
-        }
-
-        detachTasksListener() {
-          if (!this.tasksUnsub) return;
-          this.tasksUnsub();
-          this.tasksUnsub = null;
-        }
-
         detachTimerListener() {
           if (!this.timerUnsub) return;
           this.timerUnsub();
@@ -2670,7 +2624,6 @@
 
         async syncTaskUpsert(task) {
           if (!this.isReady || !task?.id) return;
-          if (String(task.id) === this.activeTimerTaskId) return;
           const normalized = this.app.normalizeTask(task);
           await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
             ...normalized,
