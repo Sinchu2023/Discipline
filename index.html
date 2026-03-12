@@ -2195,8 +2195,6 @@
           this.auth = null;
           this.db = null;
           this.user = null;
-          this.timerUnsub = null;
-          this.isApplyingRemoteTimer = false;
         }
 
         get isReady() {
@@ -2221,7 +2219,6 @@
               if (!user) return;
               await this.bootstrapUserData();
               await this.restoreTimerFromCloud();
-              this.attachTimerListener();
             },
           );
         }
@@ -2252,8 +2249,6 @@
                 console.error(e);
               }
               this.user = null;
-              if (this.timerUnsub) this.timerUnsub();
-              this.timerUnsub = null;
               this.renderAuthState();
             },
           );
@@ -2387,6 +2382,29 @@
           if (key === CONFIG.STORAGE_KEYS.TASKS) patch.tasks = value || [];
           else if (key === CONFIG.STORAGE_KEYS.FAVORITES)
             patch.favorites = value || [];
+          if (key === CONFIG.STORAGE_KEYS.ROADMAP_STATE)
+            patch.roadmap = value || {};
+          if (key === CONFIG.STORAGE_KEYS.FLOW_PROTOCOL)
+            patch.flowProtocol = value || { byDate: {} };
+          if (key === CONFIG.STORAGE_KEYS.TRAINER_STATE)
+            patch.trainerState = value || {};
+          if (key === CONFIG.STORAGE_KEYS.SHADOW_AVG)
+            patch.shadowAvg = Number(value) || 0;
+          if (key === CONFIG.STORAGE_KEYS.ACTIVE_TASK) {
+            const mission =
+              value?.missionTopic ||
+              value?.description?.replace(/^Topic:\s*/i, "") ||
+              value?.name ||
+              "";
+            const isRevision = String(mission)
+              .toLowerCase()
+              .includes("revision");
+            if (isRevision)
+              patch.revision = {
+                status: value ? "running" : "completed",
+                timeSpent: 0,
+              };
+          }
           if (!Object.keys(patch).length) return;
           await this.writePatch(patch);
         }
@@ -2403,11 +2421,9 @@
 
         async setTimerState(state) {
           if (!this.isReady) return;
-          await window.FirebaseServices.setDoc(
-            this.timerDoc(),
-            { ...state, updatedAt: Date.now() },
-            { merge: true },
-          );
+          await window.FirebaseServices.setDoc(this.timerDoc(), state, {
+            merge: true,
+          });
         }
 
         async restoreTimerFromCloud() {
@@ -2419,24 +2435,6 @@
           } catch (e) {
             console.warn("Failed to restore timer state", e);
           }
-        }
-
-        attachTimerListener() {
-          if (!this.isReady || !window.FirebaseServices.onSnapshot) return;
-          if (this.timerUnsub) this.timerUnsub();
-          this.timerUnsub = window.FirebaseServices.onSnapshot(
-            this.timerDoc(),
-            (snap) => {
-              if (!snap.exists()) return;
-              const timerState = snap.data() || {};
-              this.isApplyingRemoteTimer = true;
-              this.app.stopwatch.applyRemoteTimerState(timerState);
-              this.isApplyingRemoteTimer = false;
-            },
-            (error) => {
-              console.warn("Timer listener failed", error);
-            },
-          );
         }
       }
       class DisciplineTracker {
@@ -2885,13 +2883,12 @@
           this.app.elements["active-task-start"].textContent =
             this.app.formatTime(this.startTime);
           this.app.elements["active-task-indicator"].style.display = "block";
-          if (!this.app.cloudManager?.isApplyingRemoteTimer)
-            this.app.cloudManager?.setTimerState?.({
-              status: "running",
-              startTime: this.startTime,
-              elapsedBeforePause: 0,
-              activeTask: this.app.state.activeTask,
-            });
+          this.app.cloudManager?.setTimerState?.({
+            status: "running",
+            startTime: this.startTime,
+            elapsedBeforePause: 0,
+            activeTask: this.app.state.activeTask,
+          });
           this.startTicking();
         }
         startSleep() {
@@ -2920,13 +2917,12 @@
             date: this.app.getDateString(new Date(this.startTime)),
           });
           this.app.taskManager.addTask(entry);
-          if (!this.app.cloudManager?.isApplyingRemoteTimer)
-            this.app.cloudManager?.setTimerState?.({
-              status: "paused",
-              startTime: null,
-              elapsedBeforePause: 0,
-              activeTask: null,
-            });
+          this.app.cloudManager?.setTimerState?.({
+            status: "paused",
+            startTime: null,
+            elapsedBeforePause: 0,
+            activeTask: null,
+          });
           this.reset();
         }
         reset() {
@@ -2970,33 +2966,6 @@
         stopFromRemote() {
           if (!this.isRunning) return;
           this.reset();
-        }
-
-        applyRemoteTimerState(timerState) {
-          if (!timerState || !timerState.status) return;
-          if (timerState.status === "paused") {
-            if (this.isRunning) this.stopFromRemote();
-            return;
-          }
-          if (timerState.status !== "running") return;
-          const activeTask = timerState.activeTask;
-          const startTime = Number(timerState.startTime);
-          if (!activeTask || !startTime) return;
-          const incomingKey = `${startTime}:${activeTask.name || ""}`;
-          const currentKey = this.startTime
-            ? `${Number(this.startTime)}:${this.app.state.activeTask?.name || ""}`
-            : "";
-          if (this.isRunning && incomingKey === currentKey) return;
-          if (this.isRunning) this.stopFromRemote();
-          this.resumeActiveTask({
-            ...activeTask,
-            startTime,
-            elapsedBeforePause: Number(timerState.elapsedBeforePause || 0),
-          });
-          this.app.saveToStorage(CONFIG.STORAGE_KEYS.ACTIVE_TASK, {
-            ...activeTask,
-            startTime,
-          });
         }
 
         restoreFromCloud(timerState) {
@@ -6204,7 +6173,6 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         doc,
         getDoc,
         setDoc,
-        onSnapshot,
       } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
       const firebaseConfig = {
@@ -6240,7 +6208,6 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           doc,
           getDoc,
           setDoc,
-          onSnapshot,
         };
       }
     </script>
