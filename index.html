@@ -2217,6 +2217,7 @@
           this.auth = null;
           this.db = null;
           this.user = null;
+          this.redirectLoginKey = "discipline_google_redirect_started";
         }
 
         get isReady() {
@@ -2261,7 +2262,11 @@
           this.db = window.FirebaseServices.db;
           this.bindAuthButtons();
           try {
-            await window.FirebaseServices.getRedirectResult(this.auth);
+            const redirectResult =
+              await window.FirebaseServices.getRedirectResult(this.auth);
+            if (redirectResult?.user) {
+              sessionStorage.removeItem(this.redirectLoginKey);
+            }
           } catch (error) {
             this.handleAuthError(error);
           }
@@ -2287,23 +2292,13 @@
                 new window.FirebaseServices.GoogleAuthProvider();
               provider.setCustomParameters({ prompt: "select_account" });
               try {
-                await window.FirebaseServices.signInWithPopup(
+                sessionStorage.setItem(this.redirectLoginKey, "1");
+                await window.FirebaseServices.signInWithRedirect(
                   this.auth,
                   provider,
                 );
               } catch (error) {
-                if (error?.code === "auth/popup-blocked") {
-                  try {
-                    await window.FirebaseServices.signInWithRedirect(
-                      this.auth,
-                      provider,
-                    );
-                    return;
-                  } catch (redirectError) {
-                    this.handleAuthError(redirectError);
-                    return;
-                  }
-                }
+                sessionStorage.removeItem(this.redirectLoginKey);
                 this.handleAuthError(error);
               }
             },
@@ -2384,6 +2379,23 @@
             "state",
             "timer",
           );
+        }
+
+        handleAuthError(error) {
+          const code = error?.code || "unknown";
+          const messageByCode = {
+            "auth/popup-blocked": "Login popup was blocked by the browser. Please allow popups and try again.",
+            "auth/popup-closed-by-user": "Login popup closed before authentication finished. Please try again.",
+            "auth/cancelled-popup-request": "Another sign-in is already in progress. Please wait and try again.",
+            "auth/network-request-failed": "Network error during login. Check your internet connection and retry.",
+            "auth/unauthorized-domain": "This domain is not authorized in Firebase Authentication settings.",
+            "auth/operation-not-allowed": "Google sign-in is not enabled for this Firebase project.",
+          };
+          const message =
+            messageByCode[code] ||
+            `Login failed (${code}). Please retry.`;
+          console.error("Google sign-in failed:", error);
+          alert(message);
         }
 
         tasksCollection() {
