@@ -2454,7 +2454,7 @@
         }
 
         async writePatch(patch) {
-          if (!this.isReady) return;
+          if (!this.isReady || this.isHydratingCloudState) return;
           try {
             await window.FirebaseServices.setDoc(
               this.userDoc(),
@@ -2524,6 +2524,26 @@
           } catch (e) {
             console.warn("Failed to restore timer state", e);
           }
+        }
+
+        detachTimerListener() {
+          if (!this.timerUnsub) return;
+          this.timerUnsub();
+          this.timerUnsub = null;
+        }
+
+        async syncTaskUpsert(task) {
+          if (!this.isReady || !task?.id) return;
+          const normalized = this.app.normalizeTask(task);
+          await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
+            ...normalized,
+            updatedAt: Date.now(),
+          });
+        }
+
+        async syncTaskDelete(taskId) {
+          if (!this.isReady || !taskId) return;
+          await window.FirebaseServices.deleteDoc(this.taskDoc(taskId));
         }
 
         detachTimerListener() {
