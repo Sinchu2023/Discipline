@@ -1353,8 +1353,8 @@
               <div class="shadow-progress-fill" id="shadow-progress-fill"></div>
             </div>
 
-            <details class="shadow-mission-details">
-              <summary>Daily Mission</summary>
+            <div class="shadow-mission-details">
+              <div class="shadow-mission-title">Daily Mission</div>
               <div class="shadow-goal-list">
                 <div class="shadow-goal-item">
                   <span id="mission-task-1">1. Basic Semiconductor Physics</span
@@ -1400,7 +1400,7 @@
               <div class="shadow-line">
                 Mission Score: <strong id="shadow-mission-score">0/100</strong>
               </div>
-            </details>
+            </div>
           </div>
           <div class="shadow-card" id="shadow-standard-card">
             <div class="shadow-card-title">🌑 The Shadow</div>
@@ -2378,8 +2378,9 @@
         async syncByStorageKey(key, value) {
           if (!this.isReady) return;
           const patch = {};
+          // Keep cloud writes minimal to preserve Firestore quota.
           if (key === CONFIG.STORAGE_KEYS.TASKS) patch.tasks = value || [];
-          if (key === CONFIG.STORAGE_KEYS.FAVORITES)
+          else if (key === CONFIG.STORAGE_KEYS.FAVORITES)
             patch.favorites = value || [];
           if (key === CONFIG.STORAGE_KEYS.ROADMAP_STATE)
             patch.roadmap = value || {};
@@ -2843,22 +2844,10 @@
         }
 
         collectEntryMetadata(taskName, forceCategory = null) {
-          const categories = Object.keys(CATEGORY_DEFINITIONS);
           const defaultCategory = forceCategory || "Productive Work";
-          const categoryInput = prompt(
-            `Category (${categories.join(" | ")})`,
-            defaultCategory,
-          );
-          if (categoryInput === null) return null;
-          const category =
-            this.app.resolveCategory(categoryInput) || defaultCategory;
+          const category = this.app.resolveCategory(defaultCategory) || defaultCategory;
           const subList = CATEGORY_DEFINITIONS[category] || ["General"];
-          const subInput = prompt(
-            `Subcategory for ${category} (${subList.join(" | ")})`,
-            subList[0],
-          );
-          if (subInput === null) return null;
-          const subcategory = subInput.trim() || subList[0];
+          const subcategory = subList[0] || "General";
           const description = (
             this.app.elements["task-input"].value.trim() ||
             taskName ||
@@ -6054,15 +6043,13 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
             if (e.key === "Enter" && !this.app.stopwatch.isRunning)
               this.app.stopwatch.start();
           });
-          document.querySelectorAll(".mission-start-btn").forEach((btn) =>
-            btn.addEventListener("click", (e) => {
-              const idx = Number(
-                e.currentTarget.getAttribute("data-mission-index") || -1,
-              );
-              if (idx < 0) return;
-              this.app.trainerEngine.startMissionTask(idx);
-            }),
-          );
+          document.addEventListener("click", (e) => {
+            const btn = e.target.closest?.(".mission-start-btn");
+            if (!btn) return;
+            const idx = Number(btn.getAttribute("data-mission-index") || -1);
+            if (idx < 0) return;
+            this.app.trainerEngine.startMissionTask(idx);
+          });
           this.app.elements["view-report"].addEventListener("click", () =>
             this.app.uiManager.showReport(),
           );
