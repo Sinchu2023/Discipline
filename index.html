@@ -2288,6 +2288,7 @@
             async (user) => {
               this.stopLeaderLoop();
               this.detachTimerListener();
+              this.detachTasksListener();
               this.user = user || null;
               if (user) sessionStorage.removeItem(this.redirectLoginKey);
               this.renderAuthState();
@@ -3216,11 +3217,43 @@
             CONFIG.STORAGE_KEYS.TASKS,
             this.app.state.tasks,
           );
+          this.refreshViews();
+        }
+
+        refreshViews(updateStreakWithActivity = false) {
           this.updateStats();
           this.renderTasks();
           this.app.graphManager.updateCharts();
-          this.app.updateStreak();
+          this.app.updateStreak(updateStreakWithActivity);
         }
+
+        applyRemoteTaskChanges(changes) {
+          let changed = false;
+          const byId = new Map(this.app.state.tasks.map((t) => [String(t.id), t]));
+          changes.forEach((change) => {
+            const id = String(change.id);
+            if (change.type === "removed") {
+              if (byId.delete(id)) changed = true;
+              return;
+            }
+            const normalized = this.app.normalizeTask({ id, ...(change.data || {}) });
+            const existing = byId.get(id);
+            if (
+              existing &&
+              Number(existing.updatedAt || 0) >= Number(normalized.updatedAt || 0) &&
+              Number(existing.endTime || 0) === Number(normalized.endTime || 0) &&
+              Number(existing.duration || 0) === Number(normalized.duration || 0)
+            )
+              return;
+            byId.set(id, normalized);
+            changed = true;
+          });
+          if (!changed) return;
+          this.app.state.tasks = [...byId.values()].sort((a, b) => a.startTime - b.startTime);
+          this.app.saveToStorage(CONFIG.STORAGE_KEYS.TASKS, this.app.state.tasks);
+          this.refreshViews();
+        }
+
         addTask(task) {
           this.app.state.tasks.push(this.app.normalizeTask(task));
           this.app.saveToStorage(
@@ -3234,10 +3267,7 @@
             ts: Date.now(),
           });
           this.app.syncManager.flushQueue();
-          this.updateStats();
-          this.renderTasks();
-          this.app.graphManager.updateCharts();
-          this.app.updateStreak(true);
+          this.refreshViews(true);
         }
         deleteTask(taskId) {
           this.app.state.tasks = this.app.state.tasks.filter(
@@ -3253,10 +3283,7 @@
             id: taskId,
             ts: Date.now(),
           });
-          this.updateStats();
-          this.renderTasks();
-          this.app.graphManager.updateCharts();
-          this.app.updateStreak();
+          this.refreshViews();
         }
         updateStats() {
           const today = this.app.getDateString();
@@ -3377,10 +3404,7 @@
             ts: Date.now(),
           });
           this.app.syncManager.flushQueue();
-          this.updateStats();
-          this.renderTasks();
-          this.app.graphManager.updateCharts();
-          this.app.updateStreak();
+          this.refreshViews();
         }
         renderFavorites() {
           const container = this.app.elements["favorites-grid"];
