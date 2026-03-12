@@ -2217,46 +2217,10 @@
           this.auth = null;
           this.db = null;
           this.user = null;
-          this.timerUnsub = null;
-          this.isApplyingRemoteTimer = false;
-          this.timerListenerLeaderKey = "discipline_timer_listener_leader";
-          this.tabId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-          this.leaderHeartbeatId = null;
-          this.leaderPollId = null;
-          this.isLeader = false;
-          this.broadcast = null;
-          this.lastTimerStateHash = null;
-          this.lastTimerStatus = null;
-          this.lastKnownTimerState = null;
-          this.lastWriteAt = 0;
-          this.isHydratingCloudState = false;
-          this.lastFavoritesHash = null;
         }
 
         get isReady() {
           return !!(this.auth && this.db && this.user);
-        }
-
-        handleAuthError(error) {
-          const code = error?.code || "unknown";
-          if (code === "auth/popup-blocked") {
-            alert("Popup blocked by browser. We will continue with redirect sign-in.");
-            return;
-          }
-          if (code === "auth/unauthorized-domain") {
-            alert("This domain is not authorized in Firebase Auth. Add it in Firebase Console > Authentication > Settings > Authorized domains.");
-            return;
-          }
-          if (code === "auth/operation-not-allowed") {
-            alert("Google sign-in is disabled in Firebase Console. Enable Google provider under Authentication > Sign-in method.");
-            return;
-          }
-          if (code === "auth/network-request-failed") {
-            alert("Network error during sign-in. Please check internet/VPN/ad-blockers and retry.");
-            return;
-          }
-          console.error("Google sign in failed", error);
-          alert(`Google sign in failed (${code}). See console for details.`);
         }
 
         installFirestoreInstrumentation() {
@@ -2304,18 +2268,13 @@
           window.FirebaseServices.onAuthStateChanged(
             this.auth,
             async (user) => {
-              try {
-                this.stopLeaderLoop();
-                this.detachTimerListener();
-                this.user = user || null;
-                this.renderAuthState();
-                if (!user) return;
-                await this.bootstrapUserData();
-                await this.restoreTimerFromCloud();
-                this.startLeaderLoop();
-              } catch (error) {
-                console.error("Auth state bootstrap failed", error);
-              }
+              this.stopLeaderLoop();
+              this.detachTimerListener();
+              this.user = user || null;
+              this.renderAuthState();
+              if (!user) return;
+              await this.bootstrapUserData();
+              await this.restoreTimerFromCloud();
             },
           );
         }
@@ -2358,8 +2317,6 @@
                 console.error(e);
               }
               this.user = null;
-              this.stopLeaderLoop();
-              this.detachTimerListener();
               this.renderAuthState();
             },
           );
@@ -2377,12 +2334,6 @@
             if (!container || container.contains(e.target)) return;
             this.closeProfileMenu();
           });
-
-          window.addEventListener("storage", (e) => {
-            if (e.key === this.timerListenerLeaderKey) this.evaluateLeadership();
-          });
-
-          window.addEventListener("beforeunload", () => this.stopLeaderLoop());
         }
 
         toggleProfileMenu() {
@@ -2512,13 +2463,8 @@
           if (Number.isFinite(data.shadowAvg))
             this.app.shadowEngine.shadowSevenDayAverage = data.shadowAvg;
 
-          this.isHydratingCloudState = true;
-          try {
-            await this.hydrateTasksFromCloudIfNeeded();
-            await this.hydrateFavoritesFromCloudIfNeeded();
-          } finally {
-            this.isHydratingCloudState = false;
-          }
+          await this.hydrateTasksFromCloudIfNeeded();
+          await this.hydrateFavoritesFromCloudIfNeeded();
           this.app.taskManager.initialize();
           this.app.shadowEngine.refresh(false);
           this.app.trainerEngine.refresh();
@@ -2531,10 +2477,7 @@
           this.app.state.tasks = tasksSnap.docs
             .map((d) => this.app.normalizeTask({ id: d.id, ...(d.data() || {}) }))
             .sort((a, b) => a.startTime - b.startTime);
-          localStorage.setItem(
-            CONFIG.STORAGE_KEYS.TASKS,
-            JSON.stringify(this.app.state.tasks),
-          );
+          this.app.saveToStorage(CONFIG.STORAGE_KEYS.TASKS, this.app.state.tasks);
         }
 
         async hydrateFavoritesFromCloudIfNeeded() {
@@ -2543,10 +2486,7 @@
           this.app.state.favorites = favSnap.docs
             .map((d) => d.data() || {})
             .filter((f) => !!f.label);
-          localStorage.setItem(
-            CONFIG.STORAGE_KEYS.FAVORITES,
-            JSON.stringify(this.app.state.favorites),
-          );
+          this.app.saveToStorage(CONFIG.STORAGE_KEYS.FAVORITES, this.app.state.favorites);
         }
 
         async writePatch(patch) {
@@ -2563,189 +2503,123 @@
         }
 
         async syncByStorageKey(key, value) {
-          if (!this.isReady || this.isHydratingCloudState) return;
-          if (key === CONFIG.STORAGE_KEYS.FAVORITES) {
-            await this.syncFavoritesCollection(value || []);
+          if (!this.isReady) return;
+          const patch = {};
+          // Keep cloud writes minimal to preserve Firestore quota.
+          if (key === CONFIG.STORAGE_KEYS.TASKS) patch.tasks = value || [];
+          else if (key === CONFIG.STORAGE_KEYS.FAVORITES)
+            patch.favorites = value || [];
+          if (key === CONFIG.STORAGE_KEYS.ROADMAP_STATE)
+            patch.roadmap = value || {};
+          if (key === CONFIG.STORAGE_KEYS.FLOW_PROTOCOL)
+            patch.flowProtocol = value || { byDate: {} };
+          if (key === CONFIG.STORAGE_KEYS.TRAINER_STATE)
+            patch.trainerState = value || {};
+          if (key === CONFIG.STORAGE_KEYS.SHADOW_AVG)
+            patch.shadowAvg = Number(value) || 0;
+          if (key === CONFIG.STORAGE_KEYS.ACTIVE_TASK) {
+            const mission =
+              value?.missionTopic ||
+              value?.description?.replace(/^Topic:\s*/i, "") ||
+              value?.name ||
+              "";
+            const isRevision = String(mission)
+              .toLowerCase()
+              .includes("revision");
+            if (isRevision)
+              patch.revision = {
+                status: value ? "running" : "completed",
+                timeSpent: 0,
+              };
           }
         }
 
-        async syncFavoritesCollection(favorites) {
-          if (!this.isReady) return;
-          const safe = (favorites || []).slice(0, CONFIG.FIREBASE_PROTECTION.MAX_FAVORITES_SYNC);
-          const hash = JSON.stringify(safe);
-          if (hash === this.lastFavoritesHash) return;
-          this.lastFavoritesHash = hash;
-          const writes = safe.map((fav, idx) =>
-            window.FirebaseServices.setDoc(this.favoriteDoc(idx), {
-              label: String(fav?.label || "").slice(0, CONFIG.FIREBASE_PROTECTION.MAX_TEXT_LEN),
-              category: this.app.resolveCategory(fav?.category || "Productive Work"),
-              subcategory: String(fav?.subcategory || "General").slice(0, CONFIG.FIREBASE_PROTECTION.MAX_TEXT_LEN),
-              updatedAt: Date.now(),
-            }),
+        timerDoc() {
+          return window.FirebaseServices.doc(
+            this.db,
+            "users",
+            this.user.uid,
+            "state",
+            "timer",
           );
-          await Promise.all(writes);
-        }
-
-        hashTimerState(state) {
-          return JSON.stringify({
-            status: state?.status || "paused",
-            startTime: Number(state?.startTime || 0),
-            elapsedBeforePause: Number(state?.elapsedBeforePause || 0),
-            activeName: state?.activeTask?.name || "",
-          });
-        }
-
-        shouldWriteTimerState(state) {
-          const now = Date.now();
-          const hash = this.hashTimerState(state);
-          if (hash === this.lastTimerStateHash) return false;
-          if (now - this.lastWriteAt < CONFIG.FIREBASE_PROTECTION.WRITE_DEBOUNCE_MS) return false;
-          this.lastTimerStateHash = hash;
-          this.lastWriteAt = now;
-          return true;
         }
 
         async setTimerState(state) {
-          if (!this.isReady || !this.shouldWriteTimerState(state)) return;
-          await window.FirebaseServices.setDoc(
-            this.timerDoc(),
-            {
-              ...state,
-              clientVersion: CONFIG.CLIENT_VERSION,
-              sourceTabId: this.tabId,
-              updatedAt: Date.now(),
-            },
-            { merge: true },
-          );
-          this.broadcastTimerState(state);
-          this.updateTimerListenerNeed(state?.status === "running");
+          if (!this.isReady) return;
+          await window.FirebaseServices.setDoc(this.timerDoc(), state, {
+            merge: true,
+          });
         }
 
         async restoreTimerFromCloud() {
-          const cached = this.app.loadFromStorage(CONFIG.STORAGE_KEYS.TIMER_CLOUD_STATE);
-          if (cached) {
-            this.lastKnownTimerState = cached;
-            this.app.stopwatch.restoreFromCloud(cached);
-          }
           if (!this.isReady) return;
           try {
             const snap = await window.FirebaseServices.getDoc(this.timerDoc());
             const timerState = snap.exists() ? snap.data() : null;
-            if (timerState) {
-              this.lastKnownTimerState = timerState;
-              this.app.saveToStorage(CONFIG.STORAGE_KEYS.TIMER_CLOUD_STATE, timerState);
-            }
             this.app.stopwatch.restoreFromCloud(timerState);
-            this.updateTimerListenerNeed(timerState?.status === "running");
           } catch (e) {
             console.warn("Failed to restore timer state", e);
           }
         }
 
-        startLeaderLoop() {
-          if (!window.BroadcastChannel) this.broadcast = null;
-          else {
-            this.broadcast = new BroadcastChannel("discipline_timer_channel");
-            this.broadcast.onmessage = (event) => {
-              if (event?.data?.type !== "timer-state") return;
-              this.app.stopwatch.applyRemoteTimerState(event.data.payload || {});
-            };
-          }
-          this.evaluateLeadership();
-          if (this.leaderHeartbeatId) clearInterval(this.leaderHeartbeatId);
-          this.leaderHeartbeatId = setInterval(() => this.heartbeatLeadership(), 2000);
-          if (this.leaderPollId) clearInterval(this.leaderPollId);
-          this.leaderPollId = setInterval(() => this.evaluateLeadership(), 3000);
+        detachTimerListener() {
+          if (!this.timerUnsub) return;
+          this.timerUnsub();
+          this.timerUnsub = null;
         }
 
-        stopLeaderLoop() {
-          if (this.leaderHeartbeatId) clearInterval(this.leaderHeartbeatId);
-          if (this.leaderPollId) clearInterval(this.leaderPollId);
-          this.leaderHeartbeatId = null;
-          this.leaderPollId = null;
-          if (this.isLeader) {
-            const raw = localStorage.getItem(this.timerListenerLeaderKey);
-            if (raw) {
-              const leader = JSON.parse(raw);
-              if (leader?.tabId === this.tabId) {
-                localStorage.removeItem(this.timerListenerLeaderKey);
-              }
-            }
-          }
-          this.isLeader = false;
-          this.detachTimerListener();
-          if (this.broadcast) this.broadcast.close();
-          this.broadcast = null;
+        async syncTaskUpsert(task) {
+          if (!this.isReady || !task?.id) return;
+          const normalized = this.app.normalizeTask(task);
+          await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
+            ...normalized,
+            updatedAt: Date.now(),
+          });
         }
 
-        heartbeatLeadership() {
-          if (!this.user) return;
-          const now = Date.now();
-          const raw = localStorage.getItem(this.timerListenerLeaderKey);
-          let leader = null;
-          try {
-            leader = raw ? JSON.parse(raw) : null;
-          } catch {
-            leader = null;
-          }
-          const stale = !leader || now - Number(leader.ts || 0) > 5000;
-          if (stale || leader.tabId === this.tabId) {
-            localStorage.setItem(
-              this.timerListenerLeaderKey,
-              JSON.stringify({ tabId: this.tabId, uid: this.user.uid, ts: now }),
-            );
-          }
-          this.evaluateLeadership();
+        async syncTaskDelete(taskId) {
+          if (!this.isReady || !taskId) return;
+          await window.FirebaseServices.deleteDoc(this.taskDoc(taskId));
         }
 
-        evaluateLeadership() {
-          if (!this.user) return;
-          const raw = localStorage.getItem(this.timerListenerLeaderKey);
-          let leader = null;
-          try {
-            leader = raw ? JSON.parse(raw) : null;
-          } catch {
-            leader = null;
-          }
-          const leaderMatches = leader?.uid === this.user.uid && leader?.tabId === this.tabId;
-          if (leaderMatches === this.isLeader) return;
-          this.isLeader = leaderMatches;
-          this.updateTimerListenerNeed((this.lastKnownTimerState?.status || this.lastTimerStatus) === "running");
+        detachTimerListener() {
+          if (!this.timerUnsub) return;
+          this.timerUnsub();
+          this.timerUnsub = null;
         }
 
-        updateTimerListenerNeed(isRunning) {
-          this.lastTimerStatus = isRunning ? "running" : "paused";
-          if (this.isLeader) {
-            this.attachTimerListener();
-            return;
-          }
-          this.detachTimerListener();
+        async syncTaskUpsert(task) {
+          if (!this.isReady || !task?.id) return;
+          const normalized = this.app.normalizeTask(task);
+          await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
+            ...normalized,
+            updatedAt: Date.now(),
+          });
         }
 
-        broadcastTimerState(state) {
-          if (!this.broadcast) return;
-          this.broadcast.postMessage({ type: "timer-state", payload: state });
+        async syncTaskDelete(taskId) {
+          if (!this.isReady || !taskId) return;
+          await window.FirebaseServices.deleteDoc(this.taskDoc(taskId));
         }
 
-        attachTimerListener() {
-          if (!this.isReady || !window.FirebaseServices.onSnapshot || !this.isLeader) return;
-          if (this.timerUnsub) return;
-          this.timerUnsub = window.FirebaseServices.onSnapshot(
-            this.timerDoc(),
-            (snap) => {
-              if (!snap.exists()) return;
-              const timerState = snap.data() || {};
-              this.lastKnownTimerState = timerState;
-              this.app.saveToStorage(CONFIG.STORAGE_KEYS.TIMER_CLOUD_STATE, timerState);
-              this.isApplyingRemoteTimer = true;
-              this.app.stopwatch.applyRemoteTimerState(timerState);
-              this.isApplyingRemoteTimer = false;
-              this.broadcastTimerState(timerState);
-            },
-            (error) => {
-              console.warn("Timer listener failed", error);
-            },
-          );
+        detachTimerListener() {
+          if (!this.timerUnsub) return;
+          this.timerUnsub();
+          this.timerUnsub = null;
+        }
+
+        async syncTaskUpsert(task) {
+          if (!this.isReady || !task?.id) return;
+          const normalized = this.app.normalizeTask(task);
+          await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
+            ...normalized,
+            updatedAt: Date.now(),
+          });
+        }
+
+        async syncTaskDelete(taskId) {
+          if (!this.isReady || !taskId) return;
+          await window.FirebaseServices.deleteDoc(this.taskDoc(taskId));
         }
 
         detachTimerListener() {
@@ -3214,13 +3088,12 @@
           this.app.elements["active-task-start"].textContent =
             this.app.formatTime(this.startTime);
           this.app.elements["active-task-indicator"].style.display = "block";
-          if (!this.app.cloudManager?.isApplyingRemoteTimer)
-            this.app.cloudManager?.setTimerState?.({
-              status: "running",
-              startTime: this.startTime,
-              elapsedBeforePause: 0,
-              activeTask: this.app.state.activeTask,
-            });
+          this.app.cloudManager?.setTimerState?.({
+            status: "running",
+            startTime: this.startTime,
+            elapsedBeforePause: 0,
+            activeTask: this.app.state.activeTask,
+          });
           this.startTicking();
         }
         startSleep() {
@@ -3249,13 +3122,12 @@
             date: this.app.getDateString(new Date(this.startTime)),
           });
           this.app.taskManager.addTask(entry);
-          if (!this.app.cloudManager?.isApplyingRemoteTimer)
-            this.app.cloudManager?.setTimerState?.({
-              status: "paused",
-              startTime: null,
-              elapsedBeforePause: totalElapsed,
-              activeTask: null,
-            });
+          this.app.cloudManager?.setTimerState?.({
+            status: "paused",
+            startTime: null,
+            elapsedBeforePause: 0,
+            activeTask: null,
+          });
           this.reset();
         }
         reset() {
@@ -3301,33 +3173,6 @@
           this.reset();
         }
 
-        applyRemoteTimerState(timerState) {
-          if (!timerState || !timerState.status) return;
-          if (timerState.status === "paused") {
-            if (this.isRunning) this.stopFromRemote();
-            return;
-          }
-          if (timerState.status !== "running") return;
-          const activeTask = timerState.activeTask;
-          const startTime = Number(timerState.startTime);
-          if (!activeTask || !startTime) return;
-          const incomingKey = `${startTime}:${activeTask.name || ""}`;
-          const currentKey = this.startTime
-            ? `${Number(this.startTime)}:${this.app.state.activeTask?.name || ""}`
-            : "";
-          if (this.isRunning && incomingKey === currentKey) return;
-          if (this.isRunning) this.stopFromRemote();
-          this.resumeActiveTask({
-            ...activeTask,
-            startTime,
-            elapsedBeforePause: Number(timerState.elapsedBeforePause || 0),
-          });
-          this.app.saveToStorage(CONFIG.STORAGE_KEYS.ACTIVE_TASK, {
-            ...activeTask,
-            startTime,
-          });
-        }
-
         restoreFromCloud(timerState) {
           if (this.isRunning || !timerState || timerState.status !== "running")
             return;
@@ -3360,6 +3205,7 @@
           this.app.state.tasks = [...map.values()].sort(
             (a, b) => a.startTime - b.startTime,
           );
+          incoming.forEach((t) => this.app.cloudManager?.syncTaskUpsert?.(t));
           this.app.saveToStorage(
             CONFIG.STORAGE_KEYS.TASKS,
             this.app.state.tasks,
@@ -6428,9 +6274,6 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         getDoc,
         getDocs,
         setDoc,
-        deleteDoc,
-        onSnapshot,
-        collection,
       } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
       const firebaseConfig = {
@@ -6469,9 +6312,6 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           getDoc,
           getDocs,
           setDoc,
-          deleteDoc,
-          onSnapshot,
-          collection,
         };
       }
     </script>
