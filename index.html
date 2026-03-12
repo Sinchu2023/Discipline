@@ -2313,6 +2313,8 @@
               const provider =
                 new window.FirebaseServices.GoogleAuthProvider();
               provider.setCustomParameters({ prompt: "select_account" });
+              // Redirect is more reliable in browsers with strict popup/COOP policies.
+              const useRedirectPreferred = true;
               try {
                 // Prefer popup first for faster auth completion and fewer redirect edge cases.
                 await window.FirebaseServices.signInWithPopup(
