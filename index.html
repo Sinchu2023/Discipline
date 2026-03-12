@@ -77,6 +77,50 @@
       .view-controls {
         display: flex;
         gap: 12px;
+        align-items: center;
+        position: relative;
+      }
+      .profile-menu-container {
+        position: relative;
+        display: none;
+      }
+      .profile-trigger {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        padding: 0;
+        justify-content: center;
+      }
+      .profile-menu {
+        position: absolute;
+        right: 0;
+        top: calc(100% + 8px);
+        min-width: 170px;
+        background: rgba(25, 25, 25, 0.97);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        padding: 8px;
+        display: none;
+        z-index: 50;
+      }
+      .profile-menu.open {
+        display: block;
+      }
+      .profile-menu button {
+        width: 100%;
+        justify-content: flex-start;
+        margin-bottom: 6px;
+      }
+      .profile-menu button:last-child {
+        margin-bottom: 0;
+      }
+      .profile-name {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        padding: 4px 6px 10px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 8px;
       }
       .btn {
         background: linear-gradient(145deg, #2a2a2a, #222);
@@ -1222,20 +1266,18 @@
           <button class="btn btn-primary" id="view-report">
             <i class="fas fa-chart-bar"></i> Report
           </button>
-          <button class="btn" id="export-data">
-            <i class="fas fa-download"></i> Export
-          </button>
-          <button class="btn" id="import-data">
-            <i class="fas fa-upload"></i> Import
-          </button>
           <button class="btn" id="google-login-btn">Google Login</button>
-          <button class="btn" id="google-logout-btn" style="display: none">
-            Logout
-          </button>
-          <span
-            id="auth-user-name"
-            style="font-size: 0.9rem; color: var(--text-secondary)"
-          ></span>
+          <div class="profile-menu-container" id="profile-menu-container">
+            <button class="btn profile-trigger" id="profile-menu-toggle" aria-label="Open profile menu">
+              <i class="fas fa-user"></i>
+            </button>
+            <div class="profile-menu" id="profile-menu" role="menu">
+              <div class="profile-name" id="auth-user-name"></div>
+              <button class="btn" id="import-data" role="menuitem"><i class="fas fa-upload"></i> Import</button>
+              <button class="btn" id="export-data" role="menuitem"><i class="fas fa-download"></i> Export</button>
+              <button class="btn btn-danger" id="google-logout-btn" role="menuitem">Logout</button>
+            </div>
+          </div>
           <input
             type="file"
             id="import-file"
@@ -2153,8 +2195,6 @@
           this.auth = null;
           this.db = null;
           this.user = null;
-          this.missionUnsub = null;
-          this.isApplyingRemoteMission = false;
         }
 
         get isReady() {
@@ -2178,7 +2218,7 @@
               this.renderAuthState();
               if (!user) return;
               await this.bootstrapUserData();
-              this.attachMissionListener();
+              await this.restoreTimerFromCloud();
             },
           );
         }
@@ -2209,19 +2249,44 @@
                 console.error(e);
               }
               this.user = null;
-              if (this.missionUnsub) this.missionUnsub();
               this.renderAuthState();
             },
           );
+
+          this.app.elements["profile-menu-toggle"]?.addEventListener(
+            "click",
+            (e) => {
+              e.stopPropagation();
+              this.toggleProfileMenu();
+            },
+          );
+
+          document.addEventListener("click", (e) => {
+            const container = this.app.elements["profile-menu-container"];
+            if (!container || container.contains(e.target)) return;
+            this.closeProfileMenu();
+          });
+        }
+
+        toggleProfileMenu() {
+          const menu = this.app.elements["profile-menu"];
+          if (!menu) return;
+          menu.classList.toggle("open");
+        }
+
+        closeProfileMenu() {
+          this.app.elements["profile-menu"]?.classList.remove("open");
         }
 
         renderAuthState() {
           const loginBtn = this.app.elements["google-login-btn"];
           const logoutBtn = this.app.elements["google-logout-btn"];
           const nameEl = this.app.elements["auth-user-name"];
-          if (!loginBtn || !logoutBtn || !nameEl) return;
+          const profileMenu = this.app.elements["profile-menu-container"];
+          if (!loginBtn || !logoutBtn || !nameEl || !profileMenu) return;
           if (this.user) {
             loginBtn.style.display = "none";
+            profileMenu.style.display = "block";
             logoutBtn.style.display = "inline-flex";
             nameEl.textContent =
               this.user.displayName || this.user.email || this.user.uid;
@@ -2232,8 +2297,10 @@
             });
           } else {
             loginBtn.style.display = "inline-flex";
+            profileMenu.style.display = "none";
             logoutBtn.style.display = "none";
             nameEl.textContent = "";
+            this.closeProfileMenu();
           }
         }
 
@@ -2252,11 +2319,6 @@
                   uid: this.user.uid,
                   email: this.user.email || "",
                   displayName: this.user.displayName || "",
-                },
-                missionState: {
-                  mission: "",
-                  status: "paused",
-                  startTime: null,
                 },
                 roadmap: {
                   currentDay: 1,
@@ -2333,11 +2395,6 @@
               value?.description?.replace(/^Topic:\s*/i, "") ||
               value?.name ||
               "";
-            patch.missionState = {
-              mission,
-              status: value ? "running" : "paused",
-              startTime: value?.startTime || null,
-            };
             const isRevision = String(mission)
               .toLowerCase()
               .includes("revision");
@@ -2351,54 +2408,32 @@
           await this.writePatch(patch);
         }
 
-        async setMissionRunning(mission, startTime) {
-          await this.writePatch({
-            missionState: { mission, status: "running", startTime },
-            revision: String(mission).toLowerCase().includes("revision")
-              ? { status: "running" }
-              : undefined,
+        timerDoc() {
+          return window.FirebaseServices.doc(
+            this.db,
+            "users",
+            this.user.uid,
+            "state",
+            "timer",
+          );
+        }
+
+        async setTimerState(state) {
+          if (!this.isReady) return;
+          await window.FirebaseServices.setDoc(this.timerDoc(), state, {
+            merge: true,
           });
         }
 
-        async setMissionPaused() {
-          await this.writePatch({ missionState: { status: "paused" } });
-        }
-
-        attachMissionListener() {
+        async restoreTimerFromCloud() {
           if (!this.isReady) return;
-          if (this.missionUnsub) this.missionUnsub();
-          this.missionUnsub = window.FirebaseServices.onSnapshot(
-            this.userDoc(),
-            (snap) => {
-              const data = snap.data() || {};
-              const m = data.missionState || {};
-              if (!m.status) return;
-              if (
-                m.status === "running" &&
-                m.startTime &&
-                !this.app.stopwatch.isRunning
-              ) {
-                this.isApplyingRemoteMission = true;
-                this.app.stopwatch.resumeRemoteMission({
-                  name: m.mission || "Mission",
-                  category: "Productive Work",
-                  subcategory: "Analog",
-                  description: `Topic: ${m.mission || "Mission"}`,
-                  missionTopic: m.mission || "Mission",
-                  missionType: "learning",
-                  startTime: Number(m.startTime),
-                });
-                this.isApplyingRemoteMission = false;
-              }
-              if (
-                m.status === "paused" &&
-                this.app.stopwatch.isRunning &&
-                !this.isApplyingRemoteMission
-              ) {
-                this.app.stopwatch.stopFromRemote();
-              }
-            },
-          );
+          try {
+            const snap = await window.FirebaseServices.getDoc(this.timerDoc());
+            const timerState = snap.exists() ? snap.data() : null;
+            this.app.stopwatch.restoreFromCloud(timerState);
+          } catch (e) {
+            console.warn("Failed to restore timer state", e);
+          }
         }
       }
       class DisciplineTracker {
@@ -2543,6 +2578,9 @@
             "google-login-btn",
             "google-logout-btn",
             "auth-user-name",
+            "profile-menu-container",
+            "profile-menu-toggle",
+            "profile-menu",
           ].forEach((id) => (elements[id] = document.getElementById(id)));
           return elements;
         }
@@ -2768,11 +2806,42 @@
         constructor(app) {
           this.app = app;
           this.startTime = null;
+          this.elapsedBeforePause = 0;
           this.elapsedTime = 0;
-          this.animationFrameId = null;
+          this.tickIntervalId = null;
           this.isRunning = false;
           this.pendingMeta = null;
         }
+        formatElapsed(ms) {
+          const h = Math.floor(ms / 3600000);
+          const m = Math.floor((ms % 3600000) / 60000);
+          const s = Math.floor((ms % 60000) / 1000);
+          return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+        }
+
+        getElapsedNow() {
+          if (!this.startTime) return this.elapsedBeforePause;
+          return this.elapsedBeforePause + Math.max(0, Date.now() - this.startTime);
+        }
+
+        renderTime() {
+          const elapsed = this.getElapsedNow();
+          this.elapsedTime = elapsed;
+          this.app.elements["stopwatch"].textContent = this.formatElapsed(elapsed);
+        }
+
+        startTicking() {
+          if (this.tickIntervalId) clearInterval(this.tickIntervalId);
+          this.renderTime();
+          this.tickIntervalId = setInterval(() => this.renderTime(), 1000);
+        }
+
+        stopTicking() {
+          if (!this.tickIntervalId) return;
+          clearInterval(this.tickIntervalId);
+          this.tickIntervalId = null;
+        }
+
         collectEntryMetadata(taskName, forceCategory = null) {
           const categories = Object.keys(CATEGORY_DEFINITIONS);
           const defaultCategory = forceCategory || "Productive Work";
@@ -2806,6 +2875,7 @@
           if (!resolvedMeta) return;
           this.startTime = Date.now();
           this.isRunning = true;
+          this.elapsedBeforePause = 0;
           this.elapsedTime = 0;
           this.app.state.activeTask = {
             name: name || resolvedMeta.subcategory,
@@ -2824,11 +2894,13 @@
           this.app.elements["active-task-start"].textContent =
             this.app.formatTime(this.startTime);
           this.app.elements["active-task-indicator"].style.display = "block";
-          this.app.cloudManager?.setMissionRunning?.(
-            this.app.state.activeTask.missionTopic || name || "Mission",
-            this.startTime,
-          );
-          this.update();
+          this.app.cloudManager?.setTimerState?.({
+            status: "running",
+            startTime: this.startTime,
+            elapsedBeforePause: 0,
+            activeTask: this.app.state.activeTask,
+          });
+          this.startTicking();
         }
         startSleep() {
           this.start("Sleep", {
@@ -2837,21 +2909,12 @@
             description: "Sleep Session",
           });
         }
-        update() {
-          if (!this.isRunning) return;
-          this.elapsedTime = Date.now() - this.startTime;
-          const h = Math.floor(this.elapsedTime / 3600000),
-            m = Math.floor((this.elapsedTime % 3600000) / 60000),
-            s = Math.floor((this.elapsedTime % 60000) / 1000);
-          this.app.elements["stopwatch"].textContent =
-            `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-          this.animationFrameId = requestAnimationFrame(() => this.update());
-        }
         stop() {
           if (!this.isRunning) return;
+          this.stopTicking();
+          const totalElapsed = this.getElapsedNow();
+          this.elapsedBeforePause = totalElapsed;
           this.isRunning = false;
-          if (this.animationFrameId)
-            cancelAnimationFrame(this.animationFrameId);
           const endTime = Date.now();
           const entry = this.app.normalizeTask({
             id: `${Date.now()}`,
@@ -2860,20 +2923,25 @@
             endTime,
             duration: Math.max(
               1,
-              Math.round((endTime - this.startTime) / 60000),
+              Math.round(totalElapsed / 60000),
             ),
             date: this.app.getDateString(new Date(this.startTime)),
           });
           this.app.taskManager.addTask(entry);
-          this.app.cloudManager?.setMissionPaused?.();
+          this.app.cloudManager?.setTimerState?.({
+            status: "paused",
+            startTime: null,
+            elapsedBeforePause: 0,
+            activeTask: null,
+          });
           this.reset();
         }
         reset() {
           this.isRunning = false;
           this.startTime = null;
+          this.elapsedBeforePause = 0;
           this.elapsedTime = 0;
-          if (this.animationFrameId)
-            cancelAnimationFrame(this.animationFrameId);
+          this.stopTicking();
           this.app.state.activeTask = null;
           this.app.saveToStorage(CONFIG.STORAGE_KEYS.ACTIVE_TASK, null);
           this.app.elements["stopwatch"].textContent = "00:00:00";
@@ -2884,8 +2952,9 @@
           this.app.elements["task-input"].value = "";
         }
         resumeActiveTask(activeTask) {
-          if (!activeTask?.startTime) return;
-          this.startTime = activeTask.startTime;
+          if (!activeTask?.startTime || this.isRunning) return;
+          this.startTime = Number(activeTask.startTime);
+          this.elapsedBeforePause = Number(activeTask.elapsedBeforePause || 0);
           this.isRunning = true;
           this.app.state.activeTask = activeTask;
           this.app.elements["start-btn"].disabled = true;
@@ -2896,7 +2965,7 @@
           this.app.elements["active-task-start"].textContent =
             this.app.formatTime(activeTask.startTime);
           this.app.elements["active-task-indicator"].style.display = "block";
-          this.update();
+          this.startTicking();
         }
 
         resumeRemoteMission(activeTask) {
@@ -2908,6 +2977,23 @@
         stopFromRemote() {
           if (!this.isRunning) return;
           this.reset();
+        }
+
+        restoreFromCloud(timerState) {
+          if (this.isRunning || !timerState || timerState.status !== "running")
+            return;
+          const activeTask = timerState.activeTask;
+          const startTime = Number(timerState.startTime);
+          if (!activeTask || !startTime) return;
+          this.resumeActiveTask({
+            ...activeTask,
+            startTime,
+            elapsedBeforePause: Number(timerState.elapsedBeforePause || 0),
+          });
+          this.app.saveToStorage(CONFIG.STORAGE_KEYS.ACTIVE_TASK, {
+            ...activeTask,
+            startTime,
+          });
         }
       }
       class TaskManager {
@@ -5984,10 +6070,10 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
             this.app.trainerEngine.showWindow(),
           );
           this.app.elements["export-data"].addEventListener("click", () =>
-            this.app.uiManager.exportData(),
+            (this.app.uiManager.exportData(), this.app.cloudManager.closeProfileMenu()),
           );
           this.app.elements["import-data"].addEventListener("click", () =>
-            this.app.uiManager.triggerImportPicker(),
+            (this.app.uiManager.triggerImportPicker(), this.app.cloudManager.closeProfileMenu()),
           );
           this.app.elements["import-file"].addEventListener("change", (e) => {
             const file = e.target.files?.[0];
@@ -6081,8 +6167,8 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         }
       });
       window.addEventListener("beforeunload", () => {
-        if (window.app?.stopwatch?.animationFrameId)
-          cancelAnimationFrame(window.app.stopwatch.animationFrameId);
+        if (window.app?.stopwatch?.tickIntervalId)
+          clearInterval(window.app.stopwatch.tickIntervalId);
       });
     </script>
 
@@ -6100,7 +6186,6 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         doc,
         getDoc,
         setDoc,
-        onSnapshot,
       } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
       const firebaseConfig = {
@@ -6136,7 +6221,6 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           doc,
           getDoc,
           setDoc,
-          onSnapshot,
         };
       }
     </script>
