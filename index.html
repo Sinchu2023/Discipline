@@ -2260,6 +2260,11 @@
           this.auth = window.FirebaseServices.auth;
           this.db = window.FirebaseServices.db;
           this.bindAuthButtons();
+          try {
+            await window.FirebaseServices.getRedirectResult(this.auth);
+          } catch (error) {
+            this.handleAuthError(error);
+          }
           window.FirebaseServices.onAuthStateChanged(
             this.auth,
             async (user) => {
@@ -2278,16 +2283,28 @@
           this.app.elements["google-login-btn"]?.addEventListener(
             "click",
             async () => {
+              const provider =
+                new window.FirebaseServices.GoogleAuthProvider();
+              provider.setCustomParameters({ prompt: "select_account" });
               try {
-                const provider =
-                  new window.FirebaseServices.GoogleAuthProvider();
                 await window.FirebaseServices.signInWithPopup(
                   this.auth,
                   provider,
                 );
-              } catch (e) {
-                console.error("Google sign in failed", e);
-                alert("Google sign in failed. Check Firebase config.");
+              } catch (error) {
+                if (error?.code === "auth/popup-blocked") {
+                  try {
+                    await window.FirebaseServices.signInWithRedirect(
+                      this.auth,
+                      provider,
+                    );
+                    return;
+                  } catch (redirectError) {
+                    this.handleAuthError(redirectError);
+                    return;
+                  }
+                }
+                this.handleAuthError(error);
               }
             },
           );
@@ -2543,6 +2560,26 @@
           } catch (e) {
             console.warn("Failed to restore timer state", e);
           }
+        }
+
+        detachTimerListener() {
+          if (!this.timerUnsub) return;
+          this.timerUnsub();
+          this.timerUnsub = null;
+        }
+
+        async syncTaskUpsert(task) {
+          if (!this.isReady || !task?.id) return;
+          const normalized = this.app.normalizeTask(task);
+          await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
+            ...normalized,
+            updatedAt: Date.now(),
+          });
+        }
+
+        async syncTaskDelete(taskId) {
+          if (!this.isReady || !taskId) return;
+          await window.FirebaseServices.deleteDoc(this.taskDoc(taskId));
         }
 
         detachTimerListener() {
@@ -6226,6 +6263,8 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         getAuth,
         GoogleAuthProvider,
         signInWithPopup,
+        signInWithRedirect,
+        getRedirectResult,
         signOut,
         onAuthStateChanged,
       } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
@@ -6265,6 +6304,8 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           db,
           GoogleAuthProvider,
           signInWithPopup,
+          signInWithRedirect,
+          getRedirectResult,
           signOut,
           onAuthStateChanged,
           doc,
