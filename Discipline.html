@@ -1081,6 +1081,9 @@
         <button class="btn" id="import-data">
           <i class="fas fa-upload"></i> Import
         </button>
+        <button class="btn" id="google-login-btn">Google Login</button>
+        <button class="btn" id="google-logout-btn" style="display:none;">Logout</button>
+        <span id="auth-user-name" style="font-size:0.9rem;color:var(--text-secondary);"></span>
         <input type="file" id="import-file" accept=".json,.csv,application/json,text/csv" style="display:none;" />
       </div>
     </header>
@@ -1133,10 +1136,10 @@
           <details class="shadow-mission-details">
             <summary>Daily Mission</summary>
             <div class="shadow-goal-list">
-              <div class="shadow-goal-item"><span id="mission-task-1">NPTEL (2h / 2 videos)</span><strong id="goal-nptel">0h 00m • 0/2</strong></div>
-              <div class="shadow-goal-item"><span id="mission-task-2">YouTube Learning (2h / 2 videos)</span><strong id="goal-yt">0h 00m • 0/2</strong></div>
-              <div class="shadow-goal-item"><span id="mission-task-3">Project Work (3h)</span><strong id="goal-project">0h 00m</strong></div>
-              <div class="shadow-goal-item"><span id="mission-task-4">Revision</span><strong id="goal-revision">Pending</strong></div>
+              <div class="shadow-goal-item"><span id="mission-task-1">1. Basic Semiconductor Physics</span><button class="btn btn-secondary mission-start-btn" data-mission-index="0" title="Start mission task">⭐</button><strong id="goal-nptel">0h 00m • 0/1</strong></div>
+              <div class="shadow-goal-item"><span id="mission-task-2">2. Different Models of Diodes</span><button class="btn btn-secondary mission-start-btn" data-mission-index="1" title="Start mission task">⭐</button><strong id="goal-yt">0h 00m • 0/1</strong></div>
+              <div class="shadow-goal-item"><span id="mission-task-3">3. Project Work</span><button class="btn btn-secondary mission-start-btn" data-mission-index="2" title="Start mission task">⭐</button><strong id="goal-project">0h 00m • 0/1</strong></div>
+              <div class="shadow-goal-item"><span id="mission-task-4">4. Revision</span><button class="btn btn-secondary mission-start-btn" data-mission-index="3" title="Start mission task">⭐</button><strong id="goal-revision">Pending</strong></div>
             </div>
             <div class="shadow-line">Mission Score: <strong id="shadow-mission-score">0/100</strong></div>
           </details>
@@ -1379,10 +1382,19 @@
         SHADOW_AVG: 'discipline_tracker_shadow_avg',
         TRAINER_STATE: 'discipline_tracker_trainer_state',
         FLOW_PROTOCOL: 'discipline_tracker_flow_protocol',
-        ROADMAP_STATE: 'discipline_tracker_roadmap_state'
+        ROADMAP_STATE: 'discipline_tracker_roadmap_state',
+        FIREBASE_USER: 'discipline_tracker_firebase_user'
       },
       MOTIVATION_INTERVAL: 15000,
       CHART_RANGES: { '7d': 7, '30d': 30, '3m': 90, '6m': 180, '1y': 365 },
+      FIREBASE_PROTECTION: {
+        MAX_WRITES_PER_MINUTE: 60,
+        WRITE_DEBOUNCE_MS: 1200,
+        MAX_TASKS_SYNC: 2000,
+        MAX_FAVORITES_SYNC: 200,
+        MAX_TEXT_LEN: 180,
+        MIN_MISSION_UPDATE_INTERVAL_MS: 2500
+      },
       DAILY_GOALS: [
         { id: 'nptel', label: 'NPTEL', minutesTarget: 120, sessionsTarget: 2, keywords: ['nptel'] },
         { id: 'yt', label: 'YouTube Learning', minutesTarget: 120, sessionsTarget: 2, keywords: ['youtube', 'yt'] },
@@ -1391,15 +1403,27 @@
     };
     
     const ANALOG_IC_ROADMAP_TEMPLATE = [
-      { module: 'MODULE 1 — DIODES', days: ['Basic Semiconductor Physics','Different Models of Diodes','Operating Point & Small Signal Analysis of Diode','Zener Diode as Voltage Regulator\nSeries Clipper Circuits','Shunt Clipper Circuits\nClamper Circuits'] },
-      { module: 'MODULE 2 — MOSFET FUNDAMENTALS', days: ['Introduction to MOS & Depletion MOSFETs','Enhancement MOSFETs','Important Concepts of MOS Physics','Introduction to MOSFETs\nSimple MOSFET Circuits'] },
-      { module: 'MODULE 3 — MOS BIASING', days: ['Biasing MOS\nTransconductance\nOutput Impedance','Biasing MOS for Amplification','Small Signal Model of MOS','MOSFET Current Mirrors'] },
-      { module: 'MODULE 4 — MOS AMPLIFIERS', days: ['Common Source Amplifier','Common Source Amplifier with Miller Theorem','Cascode Amplifiers'] },
-      { module: 'MODULE 5 — MOS PARASITICS', days: ['MOSFET Capacitances','Noise','Noise of Simple Circuits'] },
-      { module: 'MODULE 6 — DIFFERENTIAL PAIR', days: ['Systematic Mismatch','Random Mismatch','Differential Amplifiers\nDifferential Amplifier Offset'] },
-      { module: 'MODULE 7 — FEEDBACK', days: ['Types & Effects of Feedback','Amplifier Configurations','Negative Feedback','Stability of Negative Feedback Systems\nDominant Pole Compensation'] },
-      { module: 'MODULE 8 — OPAMP BASICS', days: ['Basics of OpAmp','Inverting & Non-Inverting Amplifier','Differential Amplifier using OpAmp\nActive Load'] }
+      { module: 'MODULE 1 — DIODES', days: ['Basic Semiconductor Physics', 'Different Models of Diodes', 'Operating Point & Small Signal Analysis of Diode', 'Zener Diode as Voltage Regulator', 'Series Clipper & Clamper Circuits'] },
+      { module: 'MODULE 2 — MOSFET FUNDAMENTALS', days: ['MOS Physics Fundamentals', 'MOS Devices: Depletion & Enhancement', 'Simple MOS Circuits', 'MOS Non-linear Circuit Concepts'] },
+      { module: 'MODULE 3 — MOS BIASING', days: ['Biasing MOS for Amplification', 'Small Signal Model of MOS', 'MOSFET Current Mirrors', 'Bias Stability Practice'] },
+      { module: 'MODULE 4 — MOS AMPLIFIERS', days: ['Common Source Amplifier', 'Miller Effect in Amplifiers', 'Cascode Amplifiers', 'Amplifier Gain Review'] },
+      { module: 'MODULE 5 — MOS PARASITICS', days: ['MOSFET Capacitances', 'Noise Fundamentals', 'Noise in Simple Circuits'] },
+      { module: 'MODULE 6 — DIFFERENTIAL PAIR', days: ['Mismatch: Systematic & Random', 'Differential Pair Fundamentals', 'Differential Offset Analysis'] },
+      { module: 'MODULE 7 — FEEDBACK', days: ['Types & Effects of Feedback', 'Negative Feedback Design', 'Stability & Dominant Pole Compensation'] },
+      { module: 'MODULE 8 — OPAMP BASICS', days: ['OpAmp Basics', 'OpAmp with Active Load', 'Differential Amplifier using OpAmp\nActive Load'] },
+      { module: 'MODULE 9 — TELESCOPIC OPAMP', days: ['Telescopic OpAmp Structure', 'Telescopic OpAmp Biasing', 'Telescopic OpAmp Gain Analysis', 'Telescopic OpAmp Limitations'] },
+      { module: 'MODULE 10 — FOLDED CASCODE OPAMP', days: ['Folded Cascode Concept', 'Folded Cascode Biasing', 'Folded Cascode Gain Analysis', 'Folded Cascode Advantages'] },
+      { module: 'MODULE 11 — TWO STAGE OPAMP', days: ['Two Stage OpAmp Architecture', 'Gain Distribution', 'Miller Compensation', 'Frequency Stability'] },
+      { module: 'MODULE 12 — ANALOG BLOCK PROJECTS', days: ['Common Source Amplifier Simulation', 'Current Mirror Design', 'Differential Pair Simulation', 'Cascode Amplifier Simulation', 'Two Stage OpAmp Simulation', 'Bandgap Reference Concept', 'LDO Regulator Concept'] }
     ];
+
+    const MISSION_THRESHOLDS = {
+      default: 30,
+      'basic semiconductor physics': 30,
+      'different models of diodes': 30,
+      'project work': 45,
+      'revision': 20
+    };
 const CATEGORY_DEFINITIONS = {
       'Sleep': ['Night Sleep', 'Nap', 'Recovery'],
       'Productive Work': ['Analog', 'PCB', 'Coding', 'Control Systems', 'Planning', 'Execution'],
@@ -1551,6 +1575,267 @@ const CATEGORY_DEFINITIONS = {
       }
       async syncNow() { await this.flushQueue(); await this.pullLatest(); }
     }
+
+    class FirebaseCloudManager {
+      constructor(app) {
+        this.app = app;
+        this.auth = null;
+        this.db = null;
+        this.user = null;
+        this.missionUnsub = null;
+        this.isApplyingRemoteMission = false;
+        this.pendingPatch = {};
+        this.flushTimer = null;
+        this.writeWindowStartedAt = 0;
+        this.writeCountInWindow = 0;
+        this.lastMissionWriteAt = 0;
+        this.lastRemoteMissionSignature = '';
+        this.lastSnapshotAt = 0;
+      }
+
+      get isReady() { return !!(this.auth && this.db && this.user); }
+
+      async initialize() {
+        if (!window.FirebaseServices) {
+          console.warn('Firebase services not configured. Running local-only mode.');
+          return;
+        }
+        this.auth = window.FirebaseServices.auth;
+        this.db = window.FirebaseServices.db;
+        this.bindAuthButtons();
+        window.FirebaseServices.onAuthStateChanged(this.auth, async (user) => {
+          this.user = user || null;
+          this.renderAuthState();
+          if (!user) return;
+          await this.bootstrapUserData();
+          this.attachMissionListener();
+        });
+      }
+
+      bindAuthButtons() {
+        this.app.elements['google-login-btn']?.addEventListener('click', async () => {
+          try {
+            const provider = new window.FirebaseServices.GoogleAuthProvider();
+            await window.FirebaseServices.signInWithPopup(this.auth, provider);
+          } catch (e) {
+            console.error('Google sign in failed', e);
+            alert('Google sign in failed. Check Firebase config.');
+          }
+        });
+        this.app.elements['google-logout-btn']?.addEventListener('click', async () => {
+          try { await window.FirebaseServices.signOut(this.auth); } catch (e) { console.error(e); }
+          this.user = null;
+          if (this.missionUnsub) this.missionUnsub();
+          this.renderAuthState();
+        });
+      }
+
+      renderAuthState() {
+        const loginBtn = this.app.elements['google-login-btn'];
+        const logoutBtn = this.app.elements['google-logout-btn'];
+        const nameEl = this.app.elements['auth-user-name'];
+        if (!loginBtn || !logoutBtn || !nameEl) return;
+        if (this.user) {
+          loginBtn.style.display = 'none';
+          logoutBtn.style.display = 'inline-flex';
+          nameEl.textContent = this.user.displayName || this.user.email || this.user.uid;
+          this.app.saveToStorage(CONFIG.STORAGE_KEYS.FIREBASE_USER, { uid: this.user.uid, email: this.user.email, displayName: this.user.displayName || '' });
+        } else {
+          loginBtn.style.display = 'inline-flex';
+          logoutBtn.style.display = 'none';
+          nameEl.textContent = '';
+        }
+      }
+
+      userDoc() {
+        return window.FirebaseServices.doc(this.db, 'users', this.user.uid);
+      }
+
+      async bootstrapUserData() {
+        const ref = this.userDoc();
+        const snap = await window.FirebaseServices.getDoc(ref);
+        if (!snap.exists()) {
+          await window.FirebaseServices.setDoc(ref, {
+            profile: { uid: this.user.uid, email: this.user.email || '', displayName: this.user.displayName || '' },
+            missionState: { mission: '', status: 'paused', startTime: null },
+            roadmap: { currentDay: 1, module: 'MODULE 1 — DIODES', completedDays: [] },
+            revision: { status: 'pending', timeSpent: 0 },
+            tasks: this.app.state.tasks,
+            favorites: this.app.state.favorites,
+            flowProtocol: this.app.flowEngine?.state || { byDate: {} },
+            trainerState: this.app.trainerEngine?.state || {},
+            shadowAvg: this.app.shadowEngine?.shadowSevenDayAverage || 0,
+            updatedAt: Date.now()
+          }, { merge: true });
+          return;
+        }
+
+        const data = snap.data() || {};
+        if (Array.isArray(data.tasks)) this.app.state.tasks = data.tasks.slice(-CONFIG.FIREBASE_PROTECTION.MAX_TASKS_SYNC).map(t => this.app.normalizeTask(t));
+        if (Array.isArray(data.favorites)) this.app.state.favorites = data.favorites;
+        if (data.roadmap && this.app.trainerEngine?.state) this.app.trainerEngine.state.roadmap = data.roadmap;
+        if (data.flowProtocol) this.app.flowEngine.state = data.flowProtocol;
+        if (data.trainerState) this.app.trainerEngine.state = { ...this.app.trainerEngine.state, ...data.trainerState };
+        if (Number.isFinite(data.shadowAvg)) this.app.shadowEngine.shadowSevenDayAverage = data.shadowAvg;
+
+        this.app.taskManager.initialize();
+        this.app.shadowEngine.refresh(false);
+        this.app.trainerEngine.refresh();
+        this.app.flowEngine.refresh();
+      }
+
+
+      sanitizeText(value, maxLen = CONFIG.FIREBASE_PROTECTION.MAX_TEXT_LEN) {
+        return String(value || '').replace(/[<>]/g, '').slice(0, maxLen);
+      }
+
+      sanitizeTask(task) {
+        const normalized = this.app.normalizeTask(task || {});
+        return {
+          ...normalized,
+          description: this.sanitizeText(normalized.description, CONFIG.FIREBASE_PROTECTION.MAX_TEXT_LEN),
+          subcategory: this.sanitizeText(normalized.subcategory, 60),
+          category: this.sanitizeText(normalized.category, 50),
+          missionTopic: this.sanitizeText(normalized.missionTopic, 120),
+          missionType: this.sanitizeText(normalized.missionType, 40)
+        };
+      }
+
+      getSafePatch(patch) {
+        const safe = {};
+        if (patch.tasks) safe.tasks = (Array.isArray(patch.tasks) ? patch.tasks : []).slice(-CONFIG.FIREBASE_PROTECTION.MAX_TASKS_SYNC).map(t => this.sanitizeTask(t));
+        if (patch.favorites) safe.favorites = (Array.isArray(patch.favorites) ? patch.favorites : []).slice(-CONFIG.FIREBASE_PROTECTION.MAX_FAVORITES_SYNC);
+        if (patch.roadmap) safe.roadmap = patch.roadmap;
+        if (patch.flowProtocol) safe.flowProtocol = patch.flowProtocol;
+        if (patch.trainerState) safe.trainerState = patch.trainerState;
+        if (Number.isFinite(patch.shadowAvg)) safe.shadowAvg = patch.shadowAvg;
+        if (patch.missionState) {
+          safe.missionState = {
+            mission: this.sanitizeText(patch.missionState.mission, 120),
+            status: patch.missionState.status === 'running' ? 'running' : 'paused',
+            startTime: Number(patch.missionState.startTime) || null
+          };
+        }
+        if (patch.revision) {
+          safe.revision = {
+            status: ['pending', 'running', 'completed'].includes(patch.revision.status) ? patch.revision.status : 'pending',
+            timeSpent: Math.max(0, Number(patch.revision.timeSpent || 0))
+          };
+        }
+        return safe;
+      }
+
+      canWriteNow() {
+        const now = Date.now();
+        if (!this.writeWindowStartedAt || now - this.writeWindowStartedAt > 60000) {
+          this.writeWindowStartedAt = now;
+          this.writeCountInWindow = 0;
+        }
+        if (this.writeCountInWindow >= CONFIG.FIREBASE_PROTECTION.MAX_WRITES_PER_MINUTE) return false;
+        this.writeCountInWindow += 1;
+        return true;
+      }
+
+      queuePatch(patch) {
+        if (!this.isReady) return;
+        const next = this.getSafePatch(patch);
+        this.pendingPatch = { ...this.pendingPatch, ...next };
+        if (this.flushTimer) clearTimeout(this.flushTimer);
+        this.flushTimer = setTimeout(() => this.flushPendingPatch(), CONFIG.FIREBASE_PROTECTION.WRITE_DEBOUNCE_MS);
+      }
+
+      async flushPendingPatch() {
+        if (!this.isReady) return;
+        const patch = this.pendingPatch;
+        this.pendingPatch = {};
+        if (!Object.keys(patch).length) return;
+        if (!this.canWriteNow()) {
+          console.warn('Firebase write budget exceeded; dropping this sync tick to protect quota.');
+          return;
+        }
+        try {
+          await window.FirebaseServices.setDoc(this.userDoc(), { ...patch, updatedAt: Date.now() }, { merge: true });
+        } catch (e) { console.warn('firebase write failed', e); }
+      }
+
+      async writePatch(patch) {
+        this.queuePatch(patch);
+      }
+
+      async syncByStorageKey(key, value) {
+        if (!this.isReady) return;
+        const patch = {};
+        if (key === CONFIG.STORAGE_KEYS.TASKS) patch.tasks = Array.isArray(value) ? value.slice(-CONFIG.FIREBASE_PROTECTION.MAX_TASKS_SYNC) : [];
+        if (key === CONFIG.STORAGE_KEYS.FAVORITES) patch.favorites = Array.isArray(value) ? value.slice(-CONFIG.FIREBASE_PROTECTION.MAX_FAVORITES_SYNC) : [];
+        if (key === CONFIG.STORAGE_KEYS.ROADMAP_STATE) patch.roadmap = value || {};
+        if (key === CONFIG.STORAGE_KEYS.FLOW_PROTOCOL) patch.flowProtocol = value || { byDate: {} };
+        if (key === CONFIG.STORAGE_KEYS.TRAINER_STATE) patch.trainerState = value || {};
+        if (key === CONFIG.STORAGE_KEYS.SHADOW_AVG) patch.shadowAvg = Number(value) || 0;
+        if (key === CONFIG.STORAGE_KEYS.ACTIVE_TASK) {
+          const mission = this.sanitizeText(value?.missionTopic || value?.description?.replace(/^Topic:\s*/i, '') || value?.name || '', 120);
+          patch.missionState = {
+            mission,
+            status: value ? 'running' : 'paused',
+            startTime: value?.startTime || null
+          };
+          const isRevision = String(mission).toLowerCase().includes('revision');
+          if (isRevision) patch.revision = { status: value ? 'running' : 'completed', timeSpent: 0 };
+        }
+        if (!Object.keys(patch).length) return;
+        await this.writePatch(patch);
+      }
+
+      async setMissionRunning(mission, startTime) {
+        const now = Date.now();
+        if (now - this.lastMissionWriteAt < CONFIG.FIREBASE_PROTECTION.MIN_MISSION_UPDATE_INTERVAL_MS) return;
+        this.lastMissionWriteAt = now;
+        const safeMission = this.sanitizeText(mission, 120);
+        await this.writePatch({ missionState: { mission: safeMission, status: 'running', startTime }, revision: String(safeMission).toLowerCase().includes('revision') ? { status: 'running' } : undefined });
+      }
+
+      async setMissionPaused() {
+        const now = Date.now();
+        if (now - this.lastMissionWriteAt < 600) return;
+        this.lastMissionWriteAt = now;
+        await this.writePatch({ missionState: { status: 'paused' } });
+      }
+
+      attachMissionListener() {
+        if (!this.isReady) return;
+        if (this.missionUnsub) this.missionUnsub();
+        this.missionUnsub = window.FirebaseServices.onSnapshot(this.userDoc(), (snap) => {
+          const now = Date.now();
+          if (now - this.lastSnapshotAt < 300) return;
+          this.lastSnapshotAt = now;
+
+          const data = snap.data() || {};
+          const m = data.missionState || {};
+          if (!m.status) return;
+
+          const missionName = this.sanitizeText(m.mission || 'Mission', 120);
+          const signature = `${m.status}|${Number(m.startTime) || 0}|${missionName}`;
+          if (signature === this.lastRemoteMissionSignature) return;
+          this.lastRemoteMissionSignature = signature;
+
+          if (m.status === 'running' && m.startTime && !this.app.stopwatch.isRunning) {
+            this.isApplyingRemoteMission = true;
+            this.app.stopwatch.resumeRemoteMission({
+              name: missionName,
+              category: 'Productive Work',
+              subcategory: 'Analog',
+              description: `Topic: ${missionName}`,
+              missionTopic: missionName,
+              missionType: 'learning',
+              startTime: Number(m.startTime)
+            });
+            this.isApplyingRemoteMission = false;
+          }
+          if (m.status === 'paused' && this.app.stopwatch.isRunning && !this.isApplyingRemoteMission) {
+            this.app.stopwatch.stopFromRemote();
+          }
+        });
+      }
+    }
     class DisciplineTracker {
       constructor() {
         this.state = {
@@ -1563,6 +1848,7 @@ const CATEGORY_DEFINITIONS = {
         };
         this.elements = this.initializeElements();
         this.syncManager = new SyncManager(this);
+        this.cloudManager = new FirebaseCloudManager(this);
         this.stopwatch = new StopwatchManager(this);
         this.taskManager = new TaskManager(this);
         this.uiManager = new UIManager(this);
@@ -1575,11 +1861,14 @@ const CATEGORY_DEFINITIONS = {
       }
       initializeElements() {
         const elements = {};
-        ['stopwatch','task-input','start-btn','stop-btn','sleep-btn','add-favorite','active-task-indicator','active-task-name','active-task-start','favorites-grid','tasks-list','productive-time','sleep-time','total-time','streak-display','current-date','current-time','motivation-line','prod-range','prod-filter','prod-filter-total','graph-productivity-total','graph-total-distraction','graph-logged-distraction','sleep-range','productivity-chart','sleep-chart','streak-popup','streak-count','streak-message','close-streak','view-report','export-data','import-data','import-file','report-modal','report-content','close-modal','print-report','close-report','open-trainer','trainer-modal','trainer-overview','trainer-content','close-trainer','close-trainer-modal','refresh-trainer','copy-trainer','shadow-current-card','shadow-standard-card','shadow-current-minutes','shadow-percent','shadow-gap','shadow-status','shadow-progress-fill','shadow-average','shadow-rank','shadow-badge','shadow-duel','shadow-note','shadow-weekly-average','shadow-momentum','shadow-weekly-gap','shadow-target','shadow-pressure','shadow-score','shadow-needed-tie','shadow-needed-lead','shadow-defense-target','shadow-verdict','shadow-trend','shadow-lead-margin','shadow-duel-you-fill','shadow-duel-shadow-fill','shadow-penalty','shadow-penalty-reason','shadow-penalty-expiry','shadow-distraction-budget','shadow-win-ladder','shadow-mission-score','goal-nptel','goal-yt','goal-project','flow-blockers-status','flow-proneness-status','flow-triggers-status','flow-cycle-status','wake-now-btn','first-action-btn','kill-switch-btn','kill-switch-countdown','flow-before-phone-check','attention-minus-btn','attention-plus-btn','attention-stretch-value','war-score','flow-action-steps','mission-task-1','mission-task-2','mission-task-3','mission-task-4','goal-revision','shadow-standard-metric','shadow-momentum-score','shadow-consistency-index','shadow-growth-trend','roadmap-penalty-timer'].forEach(id => elements[id] = document.getElementById(id));
+        ['stopwatch','task-input','start-btn','stop-btn','sleep-btn','add-favorite','active-task-indicator','active-task-name','active-task-start','favorites-grid','tasks-list','productive-time','sleep-time','total-time','streak-display','current-date','current-time','motivation-line','prod-range','prod-filter','prod-filter-total','graph-productivity-total','graph-total-distraction','graph-logged-distraction','sleep-range','productivity-chart','sleep-chart','streak-popup','streak-count','streak-message','close-streak','view-report','export-data','import-data','import-file','report-modal','report-content','close-modal','print-report','close-report','open-trainer','trainer-modal','trainer-overview','trainer-content','close-trainer','close-trainer-modal','refresh-trainer','copy-trainer','shadow-current-card','shadow-standard-card','shadow-current-minutes','shadow-percent','shadow-gap','shadow-status','shadow-progress-fill','shadow-average','shadow-rank','shadow-badge','shadow-duel','shadow-note','shadow-weekly-average','shadow-momentum','shadow-weekly-gap','shadow-target','shadow-pressure','shadow-score','shadow-needed-tie','shadow-needed-lead','shadow-defense-target','shadow-verdict','shadow-trend','shadow-lead-margin','shadow-duel-you-fill','shadow-duel-shadow-fill','shadow-penalty','shadow-penalty-reason','shadow-penalty-expiry','shadow-distraction-budget','shadow-win-ladder','shadow-mission-score','goal-nptel','goal-yt','goal-project','flow-blockers-status','flow-proneness-status','flow-triggers-status','flow-cycle-status','wake-now-btn','first-action-btn','kill-switch-btn','kill-switch-countdown','flow-before-phone-check','attention-minus-btn','attention-plus-btn','attention-stretch-value','war-score','flow-action-steps','mission-task-1','mission-task-2','mission-task-3','mission-task-4','goal-revision','shadow-standard-metric','shadow-momentum-score','shadow-consistency-index','shadow-growth-trend','roadmap-penalty-timer','google-login-btn','google-logout-btn','auth-user-name'].forEach(id => elements[id] = document.getElementById(id));
         return elements;
       }
       loadFromStorage(key) { try { const d = localStorage.getItem(key); return d ? JSON.parse(d) : null; } catch { return null; } }
-      saveToStorage(key, data) { try { localStorage.setItem(key, JSON.stringify(data)); } catch (e) { console.error('storage save failed', e); } }
+      saveToStorage(key, data) {
+        try { localStorage.setItem(key, JSON.stringify(data)); } catch (e) { console.error('storage save failed', e); }
+        this.cloudManager?.syncByStorageKey?.(key, data);
+      }
       migrateSchema() {
         const current = parseInt(this.loadFromStorage(CONFIG.STORAGE_KEYS.SCHEMA_VERSION)) || 1;
         if (current < CONFIG.DB_SCHEMA_VERSION) {
@@ -1638,6 +1927,9 @@ const CATEGORY_DEFINITIONS = {
           confidence,
           waste_level: wasteLevel,
           graph_tag: graphTag,
+          missionTopic: task.missionTopic || task.topic || '',
+          missionType: task.missionType || '',
+          sourceAgnostic: !!task.sourceAgnostic,
           classification_json: {
             activity: task.description || task.name || '',
             category: growthCategory,
@@ -1674,6 +1966,7 @@ const CATEGORY_DEFINITIONS = {
         if (this.state.activeTask) this.stopwatch.resumeActiveTask(this.state.activeTask);
         window.addEventListener('online', () => this.syncManager.syncNow());
         await this.syncManager.syncNow();
+        await this.cloudManager.initialize();
       }
       loadChartJS() { return new Promise((resolve, reject) => { const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/chart.js'; s.onload=resolve; s.onerror=reject; document.head.appendChild(s); }); }
       updateStreak(showPopup = false) {
@@ -1714,6 +2007,7 @@ const CATEGORY_DEFINITIONS = {
         this.app.elements['start-btn'].disabled = true; this.app.elements['stop-btn'].disabled = false; this.app.elements['task-input'].disabled = true;
         this.app.elements['active-task-name'].textContent = `${this.app.state.activeTask.category} • ${this.app.state.activeTask.subcategory}`;
         this.app.elements['active-task-start'].textContent = this.app.formatTime(this.startTime); this.app.elements['active-task-indicator'].style.display = 'block';
+        this.app.cloudManager?.setMissionRunning?.(this.app.state.activeTask.missionTopic || name || 'Mission', this.startTime);
         this.update();
       }
       startSleep() { this.start('Sleep', { category: 'Sleep', subcategory: 'Night Sleep', description: 'Sleep Session' }); }
@@ -1737,6 +2031,7 @@ const CATEGORY_DEFINITIONS = {
           date: this.app.getDateString(new Date(this.startTime))
         });
         this.app.taskManager.addTask(entry);
+        this.app.cloudManager?.setMissionPaused?.();
         this.reset();
       }
       reset() {
@@ -1752,6 +2047,17 @@ const CATEGORY_DEFINITIONS = {
         this.app.elements['active-task-name'].textContent = `${activeTask.category || 'Productive Work'} • ${activeTask.subcategory || 'General'}`;
         this.app.elements['active-task-start'].textContent = this.app.formatTime(activeTask.startTime); this.app.elements['active-task-indicator'].style.display = 'block';
         this.update();
+      }
+
+      resumeRemoteMission(activeTask) {
+        this.resumeActiveTask(activeTask);
+        this.app.state.activeTask = activeTask;
+        this.app.saveToStorage(CONFIG.STORAGE_KEYS.ACTIVE_TASK, activeTask);
+      }
+
+      stopFromRemote() {
+        if (!this.isRunning) return;
+        this.reset();
       }
     }
     class TaskManager {
@@ -2960,28 +3266,62 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
       }
 
       getRoadmapState() {
-        const stored = this.app.loadFromStorage(CONFIG.STORAGE_KEYS.ROADMAP_STATE);
-        if (stored?.modules?.length) return stored;
-        return {
-          modules: ANALOG_IC_ROADMAP_TEMPLATE.map((m, mi) => ({
+        const createFromTemplate = () => ({
+          modules: ANALOG_IC_ROADMAP_TEMPLATE.map(m => ({
             name: m.module,
-            days: m.days.map((task, di) => ({ day: `Day ${mi === 0 ? di + 1 : 0}`, text: task, completed: false }))
+            days: m.days.map(task => ({ day: '', text: task, completed: false }))
           })),
           editMode: false,
           startedAt: Date.now()
-        };
+        });
+
+        const stored = this.app.loadFromStorage(CONFIG.STORAGE_KEYS.ROADMAP_STATE);
+        if (!stored?.modules?.length) return createFromTemplate();
+
+        const allCompleted = stored.modules.every(mod => mod.days?.length && mod.days.every(day => day.completed));
+        if (allCompleted) return createFromTemplate();
+
+        const merged = createFromTemplate();
+        merged.editMode = !!stored.editMode;
+        merged.startedAt = stored.startedAt || merged.startedAt;
+        merged.modules.forEach((module, mi) => {
+          const fromStored = stored.modules[mi];
+          if (!fromStored) return;
+          module.name = fromStored.name || module.name;
+          module.days.forEach((day, di) => {
+            const storedDay = fromStored.days?.[di];
+            if (!storedDay) return;
+            day.text = storedDay.text || day.text;
+            day.completed = !!storedDay.completed;
+          });
+        });
+        return merged;
       }
 
       normalizeRoadmapDays() {
         let counter = 1;
         this.state.roadmap.modules.forEach(mod => {
-          mod.days.forEach(day => { day.day = `Day ${counter++}`; });
+          mod.days.forEach(day => {
+            day.day = `Day ${counter++}`;
+            if (day.day === 'Day 29' && typeof day.text === 'string' && day.text.includes('Differential Amplifier using OpAmp')) {
+              day.text = 'Differential Amplifier using OpAmp\nActive Load';
+            }
+          });
         });
       }
 
       ensureRoadmap() {
         if (!this.state.roadmap) this.state.roadmap = this.getRoadmapState();
         this.normalizeRoadmapDays();
+      }
+
+      normalizeTopic(text = '') {
+        return text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+      }
+
+      getThresholdForTopic(topic = '') {
+        const key = this.normalizeTopic(topic);
+        return MISSION_THRESHOLDS[key] || MISSION_THRESHOLDS.default;
       }
 
       getRoadmapProgress() {
@@ -2996,20 +3336,118 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         return { moduleIndex, activeModule };
       }
 
+      getActiveRoadmapDay() {
+        const { moduleIndex } = this.getRoadmapProgress();
+        const module = this.state.roadmap.modules[moduleIndex];
+        if (!module) return null;
+        const dayIndex = module.days.findIndex(d => !d.completed);
+        if (dayIndex < 0) return null;
+        return { moduleIndex, dayIndex, day: module.days[dayIndex], module };
+      }
+
+      getTopicProgress(topic, dateStr = this.app.getDateString(new Date())) {
+        const normalizedTopic = this.normalizeTopic(topic);
+        const topicWords = normalizedTopic.split(' ').filter(w => w.length > 3);
+        let minutes = 0;
+        let sessions = 0;
+
+        this.app.state.tasks.forEach(task => {
+          if (!task || task.date !== dateStr || !this.app.isProductiveCategory(task.category)) return;
+          const taskTopic = this.normalizeTopic(task.missionTopic || task.topic || '');
+          const haystack = this.normalizeTopic(`${task.description || ''} ${task.subcategory || ''} ${task.category || ''}`);
+          const matchesTopic = taskTopic === normalizedTopic || topicWords.some(w => haystack.includes(w));
+          if (!matchesTopic) return;
+          minutes += Number(task.duration || 0);
+          sessions += 1;
+        });
+
+        return { minutes, sessions, threshold: this.getThresholdForTopic(topic) };
+      }
+
       getDailyMissionTasks() {
-        const { activeModule } = this.getRoadmapProgress();
-        if (!activeModule) return ['Project Work', 'Revision'];
-        const tasks = activeModule.days.filter(d => !d.completed).map(d => d.text.split('\n')[0]);
-        return [...tasks.slice(0, 2), 'Project Work', 'Revision'];
+        const active = this.getActiveRoadmapDay();
+        const learningTasks = [];
+
+        if (active) {
+          const moduleDays = active.module.days;
+          for (let i = 0; i <= active.dayIndex; i++) {
+            const day = moduleDays[i];
+            const topic = (day.text || '').split('\n')[0].trim();
+            const progress = this.getTopicProgress(topic);
+            const done = progress.minutes >= progress.threshold;
+            learningTasks.push({ type: 'learning', topic, progress, done });
+          }
+        }
+
+        const projectProgress = this.getTopicProgress('Project Work');
+        const projectDone = projectProgress.minutes >= this.getThresholdForTopic('Project Work');
+        const allLearningDone = learningTasks.length > 0 ? learningTasks.every(t => t.done) : true;
+        const revisionProgress = this.getTopicProgress('Revision');
+        const revisionThreshold = this.getThresholdForTopic('Revision');
+        const revisionDone = revisionProgress.minutes >= revisionThreshold;
+
+        return [
+          ...learningTasks,
+          { type: 'project', topic: 'Project Work', progress: projectProgress, done: projectDone },
+          { type: 'revision', topic: 'Revision', progress: revisionProgress, done: revisionDone, active: allLearningDone && projectDone }
+        ];
+      }
+
+      startMissionTask(index) {
+        const tasks = this.getDailyMissionTasks();
+        const item = tasks[index];
+        if (!item || !item.topic) return;
+        if (item.type === 'revision' && !item.active) {
+          alert('Revision unlocks after all learning tasks are completed.');
+          return;
+        }
+        if (this.app.stopwatch.isRunning) {
+          alert('A task is already running. Stop it first.');
+          return;
+        }
+
+        this.app.elements['task-input'].value = item.topic;
+        this.app.stopwatch.start(item.topic, {
+          category: 'Productive Work',
+          subcategory: 'Analog',
+          description: `Topic: ${item.topic}`,
+          missionTopic: item.topic,
+          missionType: item.type,
+          sourceAgnostic: true
+        });
       }
 
       syncMissionFromRoadmap() {
         const tasks = this.getDailyMissionTasks();
-        const ids = ['mission-task-1', 'mission-task-2', 'mission-task-3', 'mission-task-4'];
-        ids.forEach((id, idx) => {
-          const el = this.app.elements[id];
-          if (el) el.textContent = `${idx + 1}. ${tasks[idx] || '-'}`;
-        });
+        const container = document.querySelector('.shadow-goal-list');
+        if (!container) return;
+
+        const taskIds = ['mission-task-1', 'mission-task-2', 'mission-task-3', 'mission-task-4'];
+        const valueIds = ['goal-nptel', 'goal-yt', 'goal-project', 'goal-revision'];
+
+        container.innerHTML = tasks.map((item, idx) => {
+          const threshold = item.progress?.threshold || this.getThresholdForTopic(item.topic);
+          const done = !!item.done;
+          const disabled = item.type === 'revision' && !item.active;
+          const valueText = disabled
+            ? 'Pending'
+            : `${this.app.formatDuration(item.progress?.minutes || 0)} / ${this.app.formatDuration(threshold)}`;
+          const labelId = idx < 4 ? ` id="${taskIds[idx]}"` : '';
+          const valueId = idx < 4 ? ` id="${valueIds[idx]}"` : '';
+          const doneCls = done ? ' shadow-goal-done' : '';
+          return `<div class="shadow-goal-item"><span${labelId}>${idx + 1}. ${this.escapeHtml(item.topic)}</span><button class="btn btn-secondary mission-start-btn" data-mission-index="${idx}" ${disabled ? 'disabled' : ''} title="Start mission task">⭐</button><strong${valueId} class="${doneCls.trim()}">${this.escapeHtml(valueText)}</strong></div>`;
+        }).join('');
+
+        const active = this.getActiveRoadmapDay();
+        if (active) {
+          const topic = (active.day.text || '').split('\n')[0].trim();
+          const progress = this.getTopicProgress(topic);
+          if (!active.day.completed && progress.minutes >= this.getThresholdForTopic(topic)) {
+            active.day.completed = true;
+            this.app.saveToStorage(CONFIG.STORAGE_KEYS.ROADMAP_STATE, this.state.roadmap);
+            this.normalizeRoadmapDays();
+          }
+        }
       }
 
       updatePenaltyTimer() {
@@ -3018,16 +3456,15 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         const { activeModule } = this.getRoadmapProgress();
         if (!activeModule) { el.textContent = 'No active penalty'; return; }
         const pending = activeModule.days.filter(d => !d.completed).length;
-        if (!pending) { el.textContent = 'Module complete'; return; }
-        const dayNumber = Number((activeModule.days[activeModule.days.length - 1]?.day || '').replace('Day ', '')) || 1;
+        if (!pending) { el.textContent = 'Module complete • no penalty'; return; }
+
         const due = new Date();
-        due.setHours(23,59,59,999);
-        due.setDate(due.getDate() + Math.max(0, dayNumber - new Date().getDate()));
+        due.setHours(23, 59, 59, 999);
         const ms = Math.max(0, due - new Date());
         const h = String(Math.floor(ms / 3600000)).padStart(2,'0');
         const m = String(Math.floor((ms % 3600000)/60000)).padStart(2,'0');
         const s = String(Math.floor((ms % 60000)/1000)).padStart(2,'0');
-        el.textContent = `Pending ${pending} task(s) • penalty starts in ${h}:${m}:${s}`;
+        el.textContent = `Pending ${pending} task(s) • penalty countdown ${h}:${m}:${s} (applies if module is incomplete at deadline)`;
       }
 
       renderRoadmap() {
@@ -3051,12 +3488,15 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           const moduleTitle = this.state.roadmap.editMode ? `<input class="roadmap-module-edit" data-module="${mi}" value="${this.escapeHtml(mod.name)}"/>` : this.escapeHtml(mod.name);
           html += `<section class="trainer-section"><div class="trainer-section-title">${moduleTitle} ${done ? '✔' : ''}</div>`;
           mod.days.forEach((day, di) => {
-            const disabled = (!unlocked || (di > 0 && !mod.days[di - 1].completed)) ? 'disabled' : '';
+            const dayUnlocked = unlocked && (di === 0 || mod.days[di - 1].completed);
+            const disabled = dayUnlocked ? '' : 'disabled';
             const checked = day.completed ? 'checked' : '';
+            const stateIcon = day.completed ? '✔' : (dayUnlocked ? '●' : '🔒');
+            const stateLabel = day.completed ? 'Completed' : (dayUnlocked ? 'Active' : 'Locked');
             if (this.state.roadmap.editMode) {
-              html += `<div class="trainer-row"><div class="trainer-key">${day.day}</div><div class="trainer-val"><textarea data-module="${mi}" data-day="${di}" class="roadmap-edit">${this.escapeHtml(day.text)}</textarea></div><label><input type="checkbox" data-module="${mi}" data-day="${di}" class="roadmap-check" ${checked} ${disabled}/> Done</label></div>`;
+              html += `<div class="trainer-row"><div class="trainer-key">${day.day} ${stateIcon}</div><div class="trainer-val"><textarea data-module="${mi}" data-day="${di}" class="roadmap-edit">${this.escapeHtml(day.text)}</textarea></div><label><input type="checkbox" data-module="${mi}" data-day="${di}" class="roadmap-check" ${checked} ${disabled}/> ${stateLabel}</label></div>`;
             } else {
-              html += `<div class="trainer-row"><div class="trainer-key">${day.day}</div><div class="trainer-val">${this.escapeHtml(day.text)}</div><label><input type="checkbox" data-module="${mi}" data-day="${di}" class="roadmap-check" ${checked} ${disabled}/> Done</label></div>`;
+              html += `<div class="trainer-row"><div class="trainer-key">${day.day} ${stateIcon}</div><div class="trainer-val">${this.escapeHtml(day.text)}</div><label><input type="checkbox" data-module="${mi}" data-day="${di}" class="roadmap-check" ${checked} ${disabled}/> ${stateLabel}</label></div>`;
             }
           });
           html += `</section>`;
@@ -3367,32 +3807,14 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         return true;
       }
 
-      getColorScheme(filter) {
+      getColorScheme() {
         return { border: 'rgb(40, 180, 99)', fill: 'rgba(40, 180, 99, 0.16)' };
       }
 
       createCharts() {
         const prodCtx = this.app.elements['productivity-chart'].getContext('2d');
         const initialRange = this.app.elements['prod-range']?.value || '7d';
-                const crosshairPlugin = {
-          id: 'crosshairPlugin',
-          afterDatasetsDraw: (chart) => {
-            const active = chart.tooltip?.getActiveElements?.() || [];
-            if (!active.length) return;
-            const { ctx, chartArea: { top, bottom, left, right } } = chart;
-            const x = active[0].element.x;
-            const y = active[0].element.y;
-            ctx.save();
-            ctx.strokeStyle = 'rgba(0,194,255,0.55)';
-            ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(right, y); ctx.stroke();
-            ctx.restore();
-          }
-        };
-
-this.charts.productivity = new Chart(prodCtx, {
-          plugins: [crosshairPlugin],
+        this.charts.productivity = new Chart(prodCtx, {
           type: 'line',
           data: this.getProductivityData(initialRange, this.getCurrentFilter()),
           options: {
@@ -3403,32 +3825,23 @@ this.charts.productivity = new Chart(prodCtx, {
               active: { animation: { duration: 320 } },
               resize: { animation: { duration: 320 } }
             },
-            plugins: { legend: { display: false }, tooltip: {
-              mode: 'nearest',
-              intersect: false,
-              callbacks: {
-                label: (ctx) => {
-                  const chart = ctx.chart;
-                  const i = ctx.dataIndex;
-                  const p = chart.data.datasets[0]?.data?.[i] || 0;
-                  const shadow = chart.data.datasets[1]?.data?.[i] || 0;
-                  const weekly = chart.data.datasets[2]?.data?.[i] || 0;
-                  const delta = (p - shadow).toFixed(2);
-                  return [
-                    `Productivity: ${p.toFixed(2)}h`,
-                    `Shadow Standard: ${Number(shadow).toFixed(2)}h`,
-                    `Delta vs Shadow: ${delta}h`,
-                    `Weekly Average: ${Number(weekly).toFixed(2)}h`
-                  ];
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                displayColors: false,
+                mode: 'nearest',
+                intersect: false,
+                callbacks: {
+                  label: (ctx) => `Productivity: ${Number(ctx.parsed.y || 0).toFixed(2)}h`
                 }
               }
-            } },
+            },
             scales: { y: { beginAtZero: true, ticks: { callback: v => v + 'h' } } },
             interaction: { mode: 'nearest', intersect: false, axis: 'x' },
             elements: {
               point: {
-                radius: 2,
-                hoverRadius: 6,
+                radius: 0,
+                hoverRadius: 0,
                 pointStyle: 'circle',
                 hoverBorderWidth: 2
               },
@@ -3445,32 +3858,14 @@ this.charts.productivity = new Chart(prodCtx, {
             responsive: true,
             maintainAspectRatio: false,
             animation: { duration: 380, easing: 'easeOutQuad' },
-            plugins: { legend: { display: false }, tooltip: {
-              mode: 'nearest',
-              intersect: false,
-              callbacks: {
-                label: (ctx) => {
-                  const chart = ctx.chart;
-                  const i = ctx.dataIndex;
-                  const p = chart.data.datasets[0]?.data?.[i] || 0;
-                  const shadow = chart.data.datasets[1]?.data?.[i] || 0;
-                  const weekly = chart.data.datasets[2]?.data?.[i] || 0;
-                  const delta = (p - shadow).toFixed(2);
-                  return [
-                    `Productivity: ${p.toFixed(2)}h`,
-                    `Shadow Standard: ${Number(shadow).toFixed(2)}h`,
-                    `Delta vs Shadow: ${delta}h`,
-                    `Weekly Average: ${Number(weekly).toFixed(2)}h`
-                  ];
-                }
-              }
-            } },
+            plugins: { legend: { display: false } },
             scales: { y: { beginAtZero: true, max: 12, ticks: { callback: v => v + 'h' } } }
           }
         });
       }
 
-      getProductivityData(range='7d', filter='all') {
+      getProductivityData(range='7d', filter='productivity') {
+        const activeFilter = 'productivity';
         const data = [];
         const labels = [];
         const today = new Date();
@@ -3486,65 +3881,33 @@ this.charts.productivity = new Chart(prodCtx, {
               const wd = new Date(d);
               wd.setDate(d.getDate() - w);
               const wds = this.app.getDateString(wd);
-              if (filter === 'total_distraction') {
-                const logged = this.app.state.tasks.filter(t => t.date===wds && this.passesProductivityFilter(t, 'logged_distraction')).reduce((a,t)=>a+t.duration,0);
-                weekMinutes += logged + this.app.getInferredWasteMinutesForDate(wds, this.app.state.tasks);
-              } else {
-                weekMinutes += this.app.state.tasks.filter(t => t.date===wds && this.passesProductivityFilter(t, filter)).reduce((a,t)=>a+t.duration,0);
-              }
+              weekMinutes += this.app.state.tasks.filter(t => t.date===wds && this.passesProductivityFilter(t, activeFilter)).reduce((a,t)=>a+t.duration,0);
             }
             mins = weekMinutes / 7;
-          } else if (filter === 'total_distraction') {
-            const logged = this.app.state.tasks.filter(t => t.date===ds && this.passesProductivityFilter(t, 'logged_distraction')).reduce((a,t)=>a+t.duration,0);
-            mins = logged + this.app.getInferredWasteMinutesForDate(ds, this.app.state.tasks);
           } else {
-            mins = this.app.state.tasks.filter(t => t.date===ds && this.passesProductivityFilter(t, filter)).reduce((a,t)=>a+t.duration,0);
+            mins = this.app.state.tasks.filter(t => t.date===ds && this.passesProductivityFilter(t, activeFilter)).reduce((a,t)=>a+t.duration,0);
           }
-          labels.push(range === 'weekly' ? d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) : d.toLocaleDateString('en-US',{month:'short',day:'numeric'}));
+          labels.push(d.toLocaleDateString('en-US',{month:'short',day:'numeric'}));
           data.push(parseFloat((mins/60).toFixed(2)));
         }
 
-        const colors = this.getColorScheme(filter);
-        const weeklyAvg = parseFloat((data.reduce((a,b)=>a+b,0) / Math.max(1, data.length)).toFixed(2));
-        const shadowStandard = parseFloat(((this.app.shadowEngine?.shadowSevenDayAverage || 0) / 60).toFixed(2));
-
-        const datasets = [{
-          label:'Productivity',
-          data,
-          borderColor: colors.border,
-          backgroundColor: colors.fill,
-          pointBackgroundColor: (ctx) => ctx.dataIndex === data.length - 1 ? '#00c2ff' : colors.border,
-          pointRadius: (ctx) => ctx.dataIndex === data.length - 1 ? 5 : 2,
-          pointHoverRadius: 6,
-          pointBorderColor: '#ffffff',
-          borderWidth: 2.5,
-          tension: 0.34,
-          fill: true
-        }];
-
-        if (filter === 'productivity') {
-          datasets.push({
-            label:'Shadow Standard',
-            data: labels.map(() => shadowStandard),
-            borderColor: 'rgba(255, 193, 7, 0.9)',
-            borderDash: [7, 5],
-            borderWidth: 2,
+        const colors = this.getColorScheme();
+        return {
+          labels,
+          datasets: [{
+            label:'Productivity',
+            data,
+            borderColor: colors.border,
+            backgroundColor: colors.fill,
+            pointBackgroundColor: colors.border,
             pointRadius: 0,
-            fill: false,
-            tension: 0
-          });
-          datasets.push({
-            label:'Weekly Average',
-            data: labels.map(() => weeklyAvg),
-            borderColor: 'rgba(0, 194, 255, 0.9)',
-            borderWidth: 2,
-            pointRadius: 0,
-            fill: false,
-            tension: 0
-          });
-        }
-
-        return { labels, datasets };
+            pointHoverRadius: 0,
+            pointBorderColor: colors.border,
+            borderWidth: 2.5,
+            tension: 0.34,
+            fill: true
+          }]
+        };
       }
 
       getSleepData(range='7d') {
@@ -3554,19 +3917,11 @@ this.charts.productivity = new Chart(prodCtx, {
       }
 
       getCurrentFilteredTotalMinutes() {
-        const filter = this.getCurrentFilter();
         const range = this.app.elements['prod-range'].value;
         const rangeDates = this.getRangeDates(range);
         const dateSet = new Set(rangeDates);
-        if (filter === 'total_distraction') {
-          const logged = this.app.state.tasks
-            .filter(t => dateSet.has(t.date) && this.passesProductivityFilter(t, 'logged_distraction'))
-            .reduce((sum, t) => sum + t.duration, 0);
-          const inferred = rangeDates.reduce((sum, dateStr) => sum + this.app.getInferredWasteMinutesForDate(dateStr, this.app.state.tasks), 0);
-          return logged + inferred;
-        }
         return this.app.state.tasks
-          .filter(t => dateSet.has(t.date) && this.passesProductivityFilter(t, filter))
+          .filter(t => dateSet.has(t.date) && this.passesProductivityFilter(t, 'productivity'))
           .reduce((sum, t) => sum + t.duration, 0);
       }
 
@@ -3610,7 +3965,6 @@ this.charts.productivity = new Chart(prodCtx, {
 
       setupChartControls() {
         this.app.elements['prod-range'].addEventListener('change', () => this.updateCharts());
-        this.app.elements['prod-filter'].addEventListener('change', () => this.updateCharts());
         this.app.elements['sleep-range'].addEventListener('change', () => this.updateCharts());
       }
     }
@@ -3623,6 +3977,13 @@ this.charts.productivity = new Chart(prodCtx, {
         this.app.elements['sleep-btn'].addEventListener('click', () => this.app.stopwatch.startSleep());
         this.app.elements['add-favorite'].addEventListener('click', () => this.app.taskManager.addFavorite());
         this.app.elements['task-input'].addEventListener('keypress', e => { if (e.key === 'Enter' && !this.app.stopwatch.isRunning) this.app.stopwatch.start(); });
+        document.addEventListener('click', (e) => {
+          const btn = e.target.closest('.mission-start-btn');
+          if (!btn) return;
+          const idx = Number(btn.getAttribute('data-mission-index') || -1);
+          if (idx < 0) return;
+          this.app.trainerEngine.startMissionTask(idx);
+        });
         this.app.elements['view-report'].addEventListener('click', () => this.app.uiManager.showReport());
         this.app.elements['open-trainer'].addEventListener('click', () => this.app.trainerEngine.showWindow());
         this.app.elements['export-data'].addEventListener('click', () => this.app.uiManager.exportData());
@@ -3661,5 +4022,43 @@ this.charts.productivity = new Chart(prodCtx, {
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && window.app.taskManager) { window.app.taskManager.updateStats(); window.app.taskManager.renderTasks(); window.app.taskManager.renderFavorites(); if (window.app.shadowEngine) window.app.shadowEngine.refresh(false); if (window.app.flowEngine) window.app.flowEngine.refresh(); } });
     window.addEventListener('beforeunload', () => { if (window.app?.stopwatch?.animationFrameId) cancelAnimationFrame(window.app.stopwatch.animationFrameId); });
   </script>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "REPLACE_WITH_FIREBASE_API_KEY",
+      authDomain: "REPLACE_WITH_FIREBASE_AUTH_DOMAIN",
+      projectId: "REPLACE_WITH_FIREBASE_PROJECT_ID",
+      storageBucket: "REPLACE_WITH_FIREBASE_STORAGE_BUCKET",
+      messagingSenderId: "REPLACE_WITH_FIREBASE_MESSAGING_SENDER_ID",
+      appId: "REPLACE_WITH_FIREBASE_APP_ID"
+    };
+
+    const hasConfig = !Object.values(firebaseConfig).some(v => String(v).startsWith('REPLACE_WITH_'));
+    if (!hasConfig) {
+      console.warn('Firebase config placeholders detected. Cloud sync disabled until configured.');
+      window.FirebaseServices = null;
+    } else {
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      window.FirebaseServices = {
+        app, auth, db,
+        GoogleAuthProvider,
+        signInWithPopup,
+        signOut,
+        onAuthStateChanged,
+        doc,
+        getDoc,
+        setDoc,
+        onSnapshot
+      };
+    }
+  </script>
+
 </body>
 </html>
