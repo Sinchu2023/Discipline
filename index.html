@@ -2243,6 +2243,8 @@
           const current = localStorage.getItem(key);
           if (current === CONFIG.CLIENT_VERSION) return;
           localStorage.setItem(key, CONFIG.CLIENT_VERSION);
+          // Avoid interrupting Firebase redirect sign-in processing.
+          if (sessionStorage.getItem(this.redirectLoginKey)) return;
           const reloadFlag = `${key}_reloaded`;
           if (sessionStorage.getItem(reloadFlag)) return;
           sessionStorage.setItem(reloadFlag, "1");
@@ -2547,16 +2549,6 @@
           }
         }
 
-        timerDoc() {
-          return window.FirebaseServices.doc(
-            this.db,
-            "users",
-            this.user.uid,
-            "state",
-            "timer",
-          );
-        }
-
         async setTimerState(state) {
           if (!this.isReady) return;
           await window.FirebaseServices.setDoc(this.timerDoc(), state, {
@@ -2573,86 +2565,6 @@
           } catch (e) {
             console.warn("Failed to restore timer state", e);
           }
-        }
-
-        detachTimerListener() {
-          if (!this.timerUnsub) return;
-          this.timerUnsub();
-          this.timerUnsub = null;
-        }
-
-        async syncTaskUpsert(task) {
-          if (!this.isReady || !task?.id) return;
-          const normalized = this.app.normalizeTask(task);
-          await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
-            ...normalized,
-            updatedAt: Date.now(),
-          });
-        }
-
-        async syncTaskDelete(taskId) {
-          if (!this.isReady || !taskId) return;
-          await window.FirebaseServices.deleteDoc(this.taskDoc(taskId));
-        }
-
-        detachTimerListener() {
-          if (!this.timerUnsub) return;
-          this.timerUnsub();
-          this.timerUnsub = null;
-        }
-
-        async syncTaskUpsert(task) {
-          if (!this.isReady || !task?.id) return;
-          const normalized = this.app.normalizeTask(task);
-          await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
-            ...normalized,
-            updatedAt: Date.now(),
-          });
-        }
-
-        async syncTaskDelete(taskId) {
-          if (!this.isReady || !taskId) return;
-          await window.FirebaseServices.deleteDoc(this.taskDoc(taskId));
-        }
-
-        detachTimerListener() {
-          if (!this.timerUnsub) return;
-          this.timerUnsub();
-          this.timerUnsub = null;
-        }
-
-        async syncTaskUpsert(task) {
-          if (!this.isReady || !task?.id) return;
-          const normalized = this.app.normalizeTask(task);
-          await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
-            ...normalized,
-            updatedAt: Date.now(),
-          });
-        }
-
-        async syncTaskDelete(taskId) {
-          if (!this.isReady || !taskId) return;
-          await window.FirebaseServices.deleteDoc(this.taskDoc(taskId));
-        }
-
-        detachTimerListener() {
-          if (!this.timerUnsub) return;
-          this.timerUnsub();
-          this.timerUnsub = null;
-        }
-
-        async syncTaskUpsert(task) {
-          if (!this.isReady || !task?.id) return;
-          const normalized = this.app.normalizeTask(task);
-          await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
-            ...normalized,
-            updatedAt: Date.now(),
-          });
-        }
-
-        async syncTaskDelete(taskId) {
-          if (!this.isReady || !taskId) return;
-          await window.FirebaseServices.deleteDoc(this.taskDoc(taskId));
         }
 
         detachTimerListener() {
@@ -6307,6 +6219,8 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         getDoc,
         getDocs,
         setDoc,
+        collection,
+        deleteDoc,
       } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
       const firebaseConfig = {
@@ -6345,6 +6259,8 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           getDoc,
           getDocs,
           setDoc,
+          collection,
+          deleteDoc,
         };
       }
     </script>
