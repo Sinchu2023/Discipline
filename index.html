@@ -2295,7 +2295,6 @@
               try {
                 await this.bootstrapUserData();
                 await this.restoreTimerFromCloud();
-                this.attachTimerListener();
               } catch (error) {
                 console.error("Post-login bootstrap failed:", error);
                 alert(
@@ -2616,20 +2615,6 @@
           }
         }
 
-        attachTimerListener() {
-          if (!this.isReady) return;
-          this.detachTimerListener();
-          this.timerUnsub = window.FirebaseServices.onSnapshot(
-            this.activeTimerDoc(),
-            (snap) => {
-              this.app.stopwatch.applyRemoteTimerState(snap.exists() ? snap.data() : null);
-            },
-            (error) => {
-              console.warn("Timer realtime listener failed", error);
-            },
-          );
-        }
-
         detachTimerListener() {
           if (!this.timerUnsub) return;
           this.timerUnsub();
@@ -2638,7 +2623,6 @@
 
         async syncTaskUpsert(task) {
           if (!this.isReady || !task?.id) return;
-          if (String(task.id) === this.activeTimerTaskId) return;
           const normalized = this.app.normalizeTask(task);
           await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
             ...normalized,
