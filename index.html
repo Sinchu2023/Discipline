@@ -1732,6 +1732,7 @@
       // ==============================================
       const CONFIG = {
         DB_SCHEMA_VERSION: 2,
+        CLIENT_VERSION: "2026.03.12.2",
         DAILY_PRODUCTIVITY_THRESHOLD_MINUTES: 240,
         DISTRACTION_BUDGET_MINUTES: 90,
         STORAGE_KEYS: {
@@ -1749,6 +1750,8 @@
           FLOW_PROTOCOL: "discipline_tracker_flow_protocol",
           ROADMAP_STATE: "discipline_tracker_roadmap_state",
           FIREBASE_USER: "discipline_tracker_firebase_user",
+          CLIENT_VERSION: "discipline_tracker_client_version",
+          TIMER_CLOUD_STATE: "discipline_tracker_timer_cloud_state",
         },
         MOTIVATION_INTERVAL: 15000,
         CHART_RANGES: { "7d": 7, "30d": 30, "3m": 90, "6m": 180, "1y": 365 },
@@ -2201,6 +2204,31 @@
           return !!(this.auth && this.db && this.user);
         }
 
+        installFirestoreInstrumentation() {
+          if (!window.FirebaseServices || window.FirebaseServices.__instrumented) return;
+          const wrap = (name) => {
+            const original = window.FirebaseServices[name];
+            if (typeof original !== "function") return;
+            window.FirebaseServices[name] = (...args) => {
+              console.count(`Firestore ${name.toUpperCase()}`);
+              return original(...args);
+            };
+          };
+          ["setDoc", "getDoc", "onSnapshot", "getDocs", "deleteDoc"].forEach(wrap);
+          window.FirebaseServices.__instrumented = true;
+        }
+
+        ensureClientVersion() {
+          const key = CONFIG.STORAGE_KEYS.CLIENT_VERSION;
+          const current = localStorage.getItem(key);
+          if (current === CONFIG.CLIENT_VERSION) return;
+          localStorage.setItem(key, CONFIG.CLIENT_VERSION);
+          const reloadFlag = `${key}_reloaded`;
+          if (sessionStorage.getItem(reloadFlag)) return;
+          sessionStorage.setItem(reloadFlag, "1");
+          location.reload();
+        }
+
         async initialize() {
           if (!window.FirebaseServices) {
             console.warn(
@@ -2208,12 +2236,16 @@
             );
             return;
           }
+          this.installFirestoreInstrumentation();
+          this.ensureClientVersion();
           this.auth = window.FirebaseServices.auth;
           this.db = window.FirebaseServices.db;
           this.bindAuthButtons();
           window.FirebaseServices.onAuthStateChanged(
             this.auth,
             async (user) => {
+              this.stopLeaderLoop();
+              this.detachTimerListener();
               this.user = user || null;
               this.renderAuthState();
               if (!user) return;
@@ -2308,6 +2340,54 @@
           return window.FirebaseServices.doc(this.db, "users", this.user.uid);
         }
 
+        timerDoc() {
+          return window.FirebaseServices.doc(
+            this.db,
+            "users",
+            this.user.uid,
+            "state",
+            "timer",
+          );
+        }
+
+        tasksCollection() {
+          return window.FirebaseServices.collection(
+            this.db,
+            "users",
+            this.user.uid,
+            "tasks",
+          );
+        }
+
+        taskDoc(taskId) {
+          return window.FirebaseServices.doc(
+            this.db,
+            "users",
+            this.user.uid,
+            "tasks",
+            String(taskId),
+          );
+        }
+
+        favoritesCollection() {
+          return window.FirebaseServices.collection(
+            this.db,
+            "users",
+            this.user.uid,
+            "favorites",
+          );
+        }
+
+        favoriteDoc(index) {
+          return window.FirebaseServices.doc(
+            this.db,
+            "users",
+            this.user.uid,
+            "favorites",
+            `fav-${index}`,
+          );
+        }
+
         async bootstrapUserData() {
           const ref = this.userDoc();
           const snap = await window.FirebaseServices.getDoc(ref);
@@ -2326,8 +2406,6 @@
                   completedDays: [],
                 },
                 revision: { status: "pending", timeSpent: 0 },
-                tasks: this.app.state.tasks,
-                favorites: this.app.state.favorites,
                 flowProtocol: this.app.flowEngine?.state || { byDate: {} },
                 trainerState: this.app.trainerEngine?.state || {},
                 shadowAvg: this.app.shadowEngine?.shadowSevenDayAverage || 0,
@@ -2335,16 +2413,9 @@
               },
               { merge: true },
             );
-            return;
           }
 
-          const data = snap.data() || {};
-          if (Array.isArray(data.tasks))
-            this.app.state.tasks = data.tasks.map((t) =>
-              this.app.normalizeTask(t),
-            );
-          if (Array.isArray(data.favorites))
-            this.app.state.favorites = data.favorites;
+          const data = snap.exists() ? snap.data() || {} : {};
           if (data.roadmap && this.app.trainerEngine?.state)
             this.app.trainerEngine.state.roadmap = data.roadmap;
           if (data.flowProtocol) this.app.flowEngine.state = data.flowProtocol;
@@ -2356,10 +2427,30 @@
           if (Number.isFinite(data.shadowAvg))
             this.app.shadowEngine.shadowSevenDayAverage = data.shadowAvg;
 
+          await this.hydrateTasksFromCloudIfNeeded();
+          await this.hydrateFavoritesFromCloudIfNeeded();
           this.app.taskManager.initialize();
           this.app.shadowEngine.refresh(false);
           this.app.trainerEngine.refresh();
           this.app.flowEngine.refresh();
+        }
+
+        async hydrateTasksFromCloudIfNeeded() {
+          if (!this.isReady || this.app.state.tasks.length) return;
+          const tasksSnap = await window.FirebaseServices.getDocs(this.tasksCollection());
+          this.app.state.tasks = tasksSnap.docs
+            .map((d) => this.app.normalizeTask({ id: d.id, ...(d.data() || {}) }))
+            .sort((a, b) => a.startTime - b.startTime);
+          this.app.saveToStorage(CONFIG.STORAGE_KEYS.TASKS, this.app.state.tasks);
+        }
+
+        async hydrateFavoritesFromCloudIfNeeded() {
+          if (!this.isReady || this.app.state.favorites.length) return;
+          const favSnap = await window.FirebaseServices.getDocs(this.favoritesCollection());
+          this.app.state.favorites = favSnap.docs
+            .map((d) => d.data() || {})
+            .filter((f) => !!f.label);
+          this.app.saveToStorage(CONFIG.STORAGE_KEYS.FAVORITES, this.app.state.favorites);
         }
 
         async writePatch(patch) {
@@ -2405,8 +2496,6 @@
                 timeSpent: 0,
               };
           }
-          if (!Object.keys(patch).length) return;
-          await this.writePatch(patch);
         }
 
         timerDoc() {
@@ -2435,6 +2524,26 @@
           } catch (e) {
             console.warn("Failed to restore timer state", e);
           }
+        }
+
+        detachTimerListener() {
+          if (!this.timerUnsub) return;
+          this.timerUnsub();
+          this.timerUnsub = null;
+        }
+
+        async syncTaskUpsert(task) {
+          if (!this.isReady || !task?.id) return;
+          const normalized = this.app.normalizeTask(task);
+          await window.FirebaseServices.setDoc(this.taskDoc(normalized.id), {
+            ...normalized,
+            updatedAt: Date.now(),
+          });
+        }
+
+        async syncTaskDelete(taskId) {
+          if (!this.isReady || !taskId) return;
+          await window.FirebaseServices.deleteDoc(this.taskDoc(taskId));
         }
       }
       class DisciplineTracker {
@@ -2858,8 +2967,8 @@
         start(taskName = null, meta = null) {
           if (this.isRunning)
             return alert("A task is already running. Stop it first.");
-          const name = taskName || this.app.elements["task-input"].value.trim();
-          if (!name && !meta) return alert("Please enter a task name");
+          const rawName = taskName || this.app.elements["task-input"].value.trim();
+          const name = rawName || "Focused Session";
           const resolvedMeta = meta || this.collectEntryMetadata(name, null);
           if (!resolvedMeta) return;
           this.startTime = Date.now();
@@ -3000,6 +3109,7 @@
           this.app.state.tasks = [...map.values()].sort(
             (a, b) => a.startTime - b.startTime,
           );
+          incoming.forEach((t) => this.app.cloudManager?.syncTaskUpsert?.(t));
           this.app.saveToStorage(
             CONFIG.STORAGE_KEYS.TASKS,
             this.app.state.tasks,
@@ -3015,6 +3125,7 @@
             CONFIG.STORAGE_KEYS.TASKS,
             this.app.state.tasks,
           );
+          this.app.cloudManager?.syncTaskUpsert?.(task);
           this.app.syncManager.queue({
             type: "upsert",
             entry: task,
@@ -3034,6 +3145,7 @@
             CONFIG.STORAGE_KEYS.TASKS,
             this.app.state.tasks,
           );
+          this.app.cloudManager?.syncTaskDelete?.(taskId);
           this.app.syncManager.queue({
             type: "delete",
             id: taskId,
@@ -3156,6 +3268,7 @@
             CONFIG.STORAGE_KEYS.TASKS,
             this.app.state.tasks,
           );
+          this.app.cloudManager?.syncTaskUpsert?.(task);
           this.app.syncManager.queue({
             type: "upsert",
             entry: task,
@@ -6160,7 +6273,7 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
     </script>
 
     <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+      import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
       import {
         getAuth,
         GoogleAuthProvider,
@@ -6172,6 +6285,7 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         getFirestore,
         doc,
         getDoc,
+        getDocs,
         setDoc,
       } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
@@ -6193,7 +6307,7 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
         );
         window.FirebaseServices = null;
       } else {
-        const app = initializeApp(firebaseConfig);
+        const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
@@ -6207,6 +6321,7 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           onAuthStateChanged,
           doc,
           getDoc,
+          getDocs,
           setDoc,
         };
       }
