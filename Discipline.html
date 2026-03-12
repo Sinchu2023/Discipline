@@ -1081,6 +1081,9 @@
         <button class="btn" id="import-data">
           <i class="fas fa-upload"></i> Import
         </button>
+        <button class="btn" id="google-login-btn">Google Login</button>
+        <button class="btn" id="google-logout-btn" style="display:none;">Logout</button>
+        <span id="auth-user-name" style="font-size:0.9rem;color:var(--text-secondary);"></span>
         <input type="file" id="import-file" accept=".json,.csv,application/json,text/csv" style="display:none;" />
       </div>
     </header>
@@ -1379,7 +1382,8 @@
         SHADOW_AVG: 'discipline_tracker_shadow_avg',
         TRAINER_STATE: 'discipline_tracker_trainer_state',
         FLOW_PROTOCOL: 'discipline_tracker_flow_protocol',
-        ROADMAP_STATE: 'discipline_tracker_roadmap_state'
+        ROADMAP_STATE: 'discipline_tracker_roadmap_state',
+        FIREBASE_USER: 'discipline_tracker_firebase_user'
       },
       MOTIVATION_INTERVAL: 15000,
       CHART_RANGES: { '7d': 7, '30d': 30, '3m': 90, '6m': 180, '1y': 365 },
@@ -1563,6 +1567,172 @@ const CATEGORY_DEFINITIONS = {
       }
       async syncNow() { await this.flushQueue(); await this.pullLatest(); }
     }
+
+    class FirebaseCloudManager {
+      constructor(app) {
+        this.app = app;
+        this.auth = null;
+        this.db = null;
+        this.user = null;
+        this.missionUnsub = null;
+        this.isApplyingRemoteMission = false;
+      }
+
+      get isReady() { return !!(this.auth && this.db && this.user); }
+
+      async initialize() {
+        if (!window.FirebaseServices) {
+          console.warn('Firebase services not configured. Running local-only mode.');
+          return;
+        }
+        this.auth = window.FirebaseServices.auth;
+        this.db = window.FirebaseServices.db;
+        this.bindAuthButtons();
+        window.FirebaseServices.onAuthStateChanged(this.auth, async (user) => {
+          this.user = user || null;
+          this.renderAuthState();
+          if (!user) return;
+          await this.bootstrapUserData();
+          this.attachMissionListener();
+        });
+      }
+
+      bindAuthButtons() {
+        this.app.elements['google-login-btn']?.addEventListener('click', async () => {
+          try {
+            const provider = new window.FirebaseServices.GoogleAuthProvider();
+            await window.FirebaseServices.signInWithPopup(this.auth, provider);
+          } catch (e) {
+            console.error('Google sign in failed', e);
+            alert('Google sign in failed. Check Firebase config.');
+          }
+        });
+        this.app.elements['google-logout-btn']?.addEventListener('click', async () => {
+          try { await window.FirebaseServices.signOut(this.auth); } catch (e) { console.error(e); }
+          this.user = null;
+          if (this.missionUnsub) this.missionUnsub();
+          this.renderAuthState();
+        });
+      }
+
+      renderAuthState() {
+        const loginBtn = this.app.elements['google-login-btn'];
+        const logoutBtn = this.app.elements['google-logout-btn'];
+        const nameEl = this.app.elements['auth-user-name'];
+        if (!loginBtn || !logoutBtn || !nameEl) return;
+        if (this.user) {
+          loginBtn.style.display = 'none';
+          logoutBtn.style.display = 'inline-flex';
+          nameEl.textContent = this.user.displayName || this.user.email || this.user.uid;
+          this.app.saveToStorage(CONFIG.STORAGE_KEYS.FIREBASE_USER, { uid: this.user.uid, email: this.user.email, displayName: this.user.displayName || '' });
+        } else {
+          loginBtn.style.display = 'inline-flex';
+          logoutBtn.style.display = 'none';
+          nameEl.textContent = '';
+        }
+      }
+
+      userDoc() {
+        return window.FirebaseServices.doc(this.db, 'users', this.user.uid);
+      }
+
+      async bootstrapUserData() {
+        const ref = this.userDoc();
+        const snap = await window.FirebaseServices.getDoc(ref);
+        if (!snap.exists()) {
+          await window.FirebaseServices.setDoc(ref, {
+            profile: { uid: this.user.uid, email: this.user.email || '', displayName: this.user.displayName || '' },
+            missionState: { mission: '', status: 'paused', startTime: null },
+            roadmap: { currentDay: 1, module: 'MODULE 1 — DIODES', completedDays: [] },
+            revision: { status: 'pending', timeSpent: 0 },
+            tasks: this.app.state.tasks,
+            favorites: this.app.state.favorites,
+            flowProtocol: this.app.flowEngine?.state || { byDate: {} },
+            trainerState: this.app.trainerEngine?.state || {},
+            shadowAvg: this.app.shadowEngine?.shadowSevenDayAverage || 0,
+            updatedAt: Date.now()
+          }, { merge: true });
+          return;
+        }
+
+        const data = snap.data() || {};
+        if (Array.isArray(data.tasks)) this.app.state.tasks = data.tasks.map(t => this.app.normalizeTask(t));
+        if (Array.isArray(data.favorites)) this.app.state.favorites = data.favorites;
+        if (data.roadmap && this.app.trainerEngine?.state) this.app.trainerEngine.state.roadmap = data.roadmap;
+        if (data.flowProtocol) this.app.flowEngine.state = data.flowProtocol;
+        if (data.trainerState) this.app.trainerEngine.state = { ...this.app.trainerEngine.state, ...data.trainerState };
+        if (Number.isFinite(data.shadowAvg)) this.app.shadowEngine.shadowSevenDayAverage = data.shadowAvg;
+
+        this.app.taskManager.initialize();
+        this.app.shadowEngine.refresh(false);
+        this.app.trainerEngine.refresh();
+        this.app.flowEngine.refresh();
+      }
+
+      async writePatch(patch) {
+        if (!this.isReady) return;
+        try {
+          await window.FirebaseServices.setDoc(this.userDoc(), { ...patch, updatedAt: Date.now() }, { merge: true });
+        } catch (e) { console.warn('firebase write failed', e); }
+      }
+
+      async syncByStorageKey(key, value) {
+        if (!this.isReady) return;
+        const patch = {};
+        if (key === CONFIG.STORAGE_KEYS.TASKS) patch.tasks = value || [];
+        if (key === CONFIG.STORAGE_KEYS.FAVORITES) patch.favorites = value || [];
+        if (key === CONFIG.STORAGE_KEYS.ROADMAP_STATE) patch.roadmap = value || {};
+        if (key === CONFIG.STORAGE_KEYS.FLOW_PROTOCOL) patch.flowProtocol = value || { byDate: {} };
+        if (key === CONFIG.STORAGE_KEYS.TRAINER_STATE) patch.trainerState = value || {};
+        if (key === CONFIG.STORAGE_KEYS.SHADOW_AVG) patch.shadowAvg = Number(value) || 0;
+        if (key === CONFIG.STORAGE_KEYS.ACTIVE_TASK) {
+          const mission = value?.missionTopic || value?.description?.replace(/^Topic:\s*/i, '') || value?.name || '';
+          patch.missionState = {
+            mission,
+            status: value ? 'running' : 'paused',
+            startTime: value?.startTime || null
+          };
+          const isRevision = String(mission).toLowerCase().includes('revision');
+          if (isRevision) patch.revision = { status: value ? 'running' : 'completed', timeSpent: 0 };
+        }
+        if (!Object.keys(patch).length) return;
+        await this.writePatch(patch);
+      }
+
+      async setMissionRunning(mission, startTime) {
+        await this.writePatch({ missionState: { mission, status: 'running', startTime }, revision: String(mission).toLowerCase().includes('revision') ? { status: 'running' } : undefined });
+      }
+
+      async setMissionPaused() {
+        await this.writePatch({ missionState: { status: 'paused' } });
+      }
+
+      attachMissionListener() {
+        if (!this.isReady) return;
+        if (this.missionUnsub) this.missionUnsub();
+        this.missionUnsub = window.FirebaseServices.onSnapshot(this.userDoc(), (snap) => {
+          const data = snap.data() || {};
+          const m = data.missionState || {};
+          if (!m.status) return;
+          if (m.status === 'running' && m.startTime && !this.app.stopwatch.isRunning) {
+            this.isApplyingRemoteMission = true;
+            this.app.stopwatch.resumeRemoteMission({
+              name: m.mission || 'Mission',
+              category: 'Productive Work',
+              subcategory: 'Analog',
+              description: `Topic: ${m.mission || 'Mission'}`,
+              missionTopic: m.mission || 'Mission',
+              missionType: 'learning',
+              startTime: Number(m.startTime)
+            });
+            this.isApplyingRemoteMission = false;
+          }
+          if (m.status === 'paused' && this.app.stopwatch.isRunning && !this.isApplyingRemoteMission) {
+            this.app.stopwatch.stopFromRemote();
+          }
+        });
+      }
+    }
     class DisciplineTracker {
       constructor() {
         this.state = {
@@ -1575,6 +1745,7 @@ const CATEGORY_DEFINITIONS = {
         };
         this.elements = this.initializeElements();
         this.syncManager = new SyncManager(this);
+        this.cloudManager = new FirebaseCloudManager(this);
         this.stopwatch = new StopwatchManager(this);
         this.taskManager = new TaskManager(this);
         this.uiManager = new UIManager(this);
@@ -1587,11 +1758,14 @@ const CATEGORY_DEFINITIONS = {
       }
       initializeElements() {
         const elements = {};
-        ['stopwatch','task-input','start-btn','stop-btn','sleep-btn','add-favorite','active-task-indicator','active-task-name','active-task-start','favorites-grid','tasks-list','productive-time','sleep-time','total-time','streak-display','current-date','current-time','motivation-line','prod-range','prod-filter','prod-filter-total','graph-productivity-total','graph-total-distraction','graph-logged-distraction','sleep-range','productivity-chart','sleep-chart','streak-popup','streak-count','streak-message','close-streak','view-report','export-data','import-data','import-file','report-modal','report-content','close-modal','print-report','close-report','open-trainer','trainer-modal','trainer-overview','trainer-content','close-trainer','close-trainer-modal','refresh-trainer','copy-trainer','shadow-current-card','shadow-standard-card','shadow-current-minutes','shadow-percent','shadow-gap','shadow-status','shadow-progress-fill','shadow-average','shadow-rank','shadow-badge','shadow-duel','shadow-note','shadow-weekly-average','shadow-momentum','shadow-weekly-gap','shadow-target','shadow-pressure','shadow-score','shadow-needed-tie','shadow-needed-lead','shadow-defense-target','shadow-verdict','shadow-trend','shadow-lead-margin','shadow-duel-you-fill','shadow-duel-shadow-fill','shadow-penalty','shadow-penalty-reason','shadow-penalty-expiry','shadow-distraction-budget','shadow-win-ladder','shadow-mission-score','goal-nptel','goal-yt','goal-project','flow-blockers-status','flow-proneness-status','flow-triggers-status','flow-cycle-status','wake-now-btn','first-action-btn','kill-switch-btn','kill-switch-countdown','flow-before-phone-check','attention-minus-btn','attention-plus-btn','attention-stretch-value','war-score','flow-action-steps','mission-task-1','mission-task-2','mission-task-3','mission-task-4','goal-revision','shadow-standard-metric','shadow-momentum-score','shadow-consistency-index','shadow-growth-trend','roadmap-penalty-timer'].forEach(id => elements[id] = document.getElementById(id));
+        ['stopwatch','task-input','start-btn','stop-btn','sleep-btn','add-favorite','active-task-indicator','active-task-name','active-task-start','favorites-grid','tasks-list','productive-time','sleep-time','total-time','streak-display','current-date','current-time','motivation-line','prod-range','prod-filter','prod-filter-total','graph-productivity-total','graph-total-distraction','graph-logged-distraction','sleep-range','productivity-chart','sleep-chart','streak-popup','streak-count','streak-message','close-streak','view-report','export-data','import-data','import-file','report-modal','report-content','close-modal','print-report','close-report','open-trainer','trainer-modal','trainer-overview','trainer-content','close-trainer','close-trainer-modal','refresh-trainer','copy-trainer','shadow-current-card','shadow-standard-card','shadow-current-minutes','shadow-percent','shadow-gap','shadow-status','shadow-progress-fill','shadow-average','shadow-rank','shadow-badge','shadow-duel','shadow-note','shadow-weekly-average','shadow-momentum','shadow-weekly-gap','shadow-target','shadow-pressure','shadow-score','shadow-needed-tie','shadow-needed-lead','shadow-defense-target','shadow-verdict','shadow-trend','shadow-lead-margin','shadow-duel-you-fill','shadow-duel-shadow-fill','shadow-penalty','shadow-penalty-reason','shadow-penalty-expiry','shadow-distraction-budget','shadow-win-ladder','shadow-mission-score','goal-nptel','goal-yt','goal-project','flow-blockers-status','flow-proneness-status','flow-triggers-status','flow-cycle-status','wake-now-btn','first-action-btn','kill-switch-btn','kill-switch-countdown','flow-before-phone-check','attention-minus-btn','attention-plus-btn','attention-stretch-value','war-score','flow-action-steps','mission-task-1','mission-task-2','mission-task-3','mission-task-4','goal-revision','shadow-standard-metric','shadow-momentum-score','shadow-consistency-index','shadow-growth-trend','roadmap-penalty-timer','google-login-btn','google-logout-btn','auth-user-name'].forEach(id => elements[id] = document.getElementById(id));
         return elements;
       }
       loadFromStorage(key) { try { const d = localStorage.getItem(key); return d ? JSON.parse(d) : null; } catch { return null; } }
-      saveToStorage(key, data) { try { localStorage.setItem(key, JSON.stringify(data)); } catch (e) { console.error('storage save failed', e); } }
+      saveToStorage(key, data) {
+        try { localStorage.setItem(key, JSON.stringify(data)); } catch (e) { console.error('storage save failed', e); }
+        this.cloudManager?.syncByStorageKey?.(key, data);
+      }
       migrateSchema() {
         const current = parseInt(this.loadFromStorage(CONFIG.STORAGE_KEYS.SCHEMA_VERSION)) || 1;
         if (current < CONFIG.DB_SCHEMA_VERSION) {
@@ -1689,6 +1863,7 @@ const CATEGORY_DEFINITIONS = {
         if (this.state.activeTask) this.stopwatch.resumeActiveTask(this.state.activeTask);
         window.addEventListener('online', () => this.syncManager.syncNow());
         await this.syncManager.syncNow();
+        await this.cloudManager.initialize();
       }
       loadChartJS() { return new Promise((resolve, reject) => { const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/chart.js'; s.onload=resolve; s.onerror=reject; document.head.appendChild(s); }); }
       updateStreak(showPopup = false) {
@@ -1729,6 +1904,7 @@ const CATEGORY_DEFINITIONS = {
         this.app.elements['start-btn'].disabled = true; this.app.elements['stop-btn'].disabled = false; this.app.elements['task-input'].disabled = true;
         this.app.elements['active-task-name'].textContent = `${this.app.state.activeTask.category} • ${this.app.state.activeTask.subcategory}`;
         this.app.elements['active-task-start'].textContent = this.app.formatTime(this.startTime); this.app.elements['active-task-indicator'].style.display = 'block';
+        this.app.cloudManager?.setMissionRunning?.(this.app.state.activeTask.missionTopic || name || 'Mission', this.startTime);
         this.update();
       }
       startSleep() { this.start('Sleep', { category: 'Sleep', subcategory: 'Night Sleep', description: 'Sleep Session' }); }
@@ -1752,6 +1928,7 @@ const CATEGORY_DEFINITIONS = {
           date: this.app.getDateString(new Date(this.startTime))
         });
         this.app.taskManager.addTask(entry);
+        this.app.cloudManager?.setMissionPaused?.();
         this.reset();
       }
       reset() {
@@ -1767,6 +1944,17 @@ const CATEGORY_DEFINITIONS = {
         this.app.elements['active-task-name'].textContent = `${activeTask.category || 'Productive Work'} • ${activeTask.subcategory || 'General'}`;
         this.app.elements['active-task-start'].textContent = this.app.formatTime(activeTask.startTime); this.app.elements['active-task-indicator'].style.display = 'block';
         this.update();
+      }
+
+      resumeRemoteMission(activeTask) {
+        this.resumeActiveTask(activeTask);
+        this.app.state.activeTask = activeTask;
+        this.app.saveToStorage(CONFIG.STORAGE_KEYS.ACTIVE_TASK, activeTask);
+      }
+
+      stopFromRemote() {
+        if (!this.isRunning) return;
+        this.reset();
       }
     }
     class TaskManager {
@@ -3775,5 +3963,43 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && window.app.taskManager) { window.app.taskManager.updateStats(); window.app.taskManager.renderTasks(); window.app.taskManager.renderFavorites(); if (window.app.shadowEngine) window.app.shadowEngine.refresh(false); if (window.app.flowEngine) window.app.flowEngine.refresh(); } });
     window.addEventListener('beforeunload', () => { if (window.app?.stopwatch?.animationFrameId) cancelAnimationFrame(window.app.stopwatch.animationFrameId); });
   </script>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "REPLACE_WITH_FIREBASE_API_KEY",
+      authDomain: "REPLACE_WITH_FIREBASE_AUTH_DOMAIN",
+      projectId: "REPLACE_WITH_FIREBASE_PROJECT_ID",
+      storageBucket: "REPLACE_WITH_FIREBASE_STORAGE_BUCKET",
+      messagingSenderId: "REPLACE_WITH_FIREBASE_MESSAGING_SENDER_ID",
+      appId: "REPLACE_WITH_FIREBASE_APP_ID"
+    };
+
+    const hasConfig = !Object.values(firebaseConfig).some(v => String(v).startsWith('REPLACE_WITH_'));
+    if (!hasConfig) {
+      console.warn('Firebase config placeholders detected. Cloud sync disabled until configured.');
+      window.FirebaseServices = null;
+    } else {
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      window.FirebaseServices = {
+        app, auth, db,
+        GoogleAuthProvider,
+        signInWithPopup,
+        signOut,
+        onAuthStateChanged,
+        doc,
+        getDoc,
+        setDoc,
+        onSnapshot
+      };
+    }
+  </script>
+
 </body>
 </html>
