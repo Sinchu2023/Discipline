@@ -2222,9 +2222,8 @@
           this.db = null;
           this.user = null;
           this.redirectLoginKey = "discipline_google_redirect_started";
-          this.authHandlersBound = false;
-          this.authListenerAttached = false;
-          this.authStateUnsub = null;
+          this.authButtonsBound = false;
+          this.firebaseReadyListenerBound = false;
         }
 
         get isReady() {
@@ -2251,6 +2250,50 @@
           window.FirebaseServices.__instrumented = true;
         }
 
+        attachFirebaseServicesIfAvailable() {
+          if (!window.FirebaseServices) return false;
+          this.auth = window.FirebaseServices.auth;
+          this.db = window.FirebaseServices.db;
+          return !!(this.auth && this.db);
+        }
+
+        bindFirebaseReadyListener() {
+          if (this.firebaseReadyListenerBound) return;
+          this.firebaseReadyListenerBound = true;
+          window.addEventListener("firebase-services-ready", () => {
+            if (this.auth) return;
+            if (!this.attachFirebaseServicesIfAvailable()) return;
+            this.initializeAuthObservers();
+          });
+        }
+
+        initializeAuthObservers() {
+          if (!this.auth || !window.FirebaseServices) return;
+          if (this.authObserverInitialized) return;
+          this.authObserverInitialized = true;
+          window.FirebaseServices.onAuthStateChanged(
+            this.auth,
+            async (user) => {
+              this.stopLeaderLoop();
+              this.detachTimerListener();
+              this.detachTasksListener();
+              this.user = user || null;
+              if (user) sessionStorage.removeItem(this.redirectLoginKey);
+              this.renderAuthState();
+              if (!user) return;
+              try {
+                await this.bootstrapUserData();
+                await this.restoreTimerFromCloud();
+              } catch (error) {
+                console.error("Post-login bootstrap failed:", error);
+                alert(
+                  "Login succeeded, but cloud data sync failed. Check Firestore rules and browser console.",
+                );
+              }
+            },
+          );
+        }
+
         ensureClientVersion() {
           const key = CONFIG.STORAGE_KEYS.CLIENT_VERSION;
           const current = localStorage.getItem(key);
@@ -2265,30 +2308,19 @@
         }
 
         async initialize() {
-          if (!window.FirebaseServices) {
-            await new Promise((resolve) => {
-              const timeoutId = setTimeout(resolve, 1200);
-              window.addEventListener(
-                "firebase-services-ready",
-                () => {
-                  clearTimeout(timeoutId);
-                  resolve();
-                },
-                { once: true },
-              );
-            });
-          }
-          if (!window.FirebaseServices) {
+          this.bindAuthButtons();
+          this.bindFirebaseReadyListener();
+
+          if (!this.attachFirebaseServicesIfAvailable()) {
             console.warn(
-              "Firebase services not configured. Running local-only mode.",
+              "Firebase services not configured yet. Waiting for module initialization.",
             );
             return;
           }
+
           this.installFirestoreInstrumentation();
           this.ensureClientVersion();
-          this.auth = window.FirebaseServices.auth;
-          this.db = window.FirebaseServices.db;
-          this.bindAuthButtons();
+
           try {
             const redirectResult =
               await window.FirebaseServices.getRedirectResult(this.auth);
@@ -2298,31 +2330,8 @@
           } catch (error) {
             this.handleAuthError(error);
           }
-          if (!this.authListenerAttached) {
-            this.authListenerAttached = true;
-            this.authStateUnsub = window.FirebaseServices.onAuthStateChanged(
-              this.auth,
-              async (user) => {
-                console.log("Auth state:", user?.uid || "logged out");
-                this.stopLeaderLoop();
-                this.detachTimerListener();
-                this.detachTasksListener();
-                this.user = user || null;
-                if (user) sessionStorage.removeItem(this.redirectLoginKey);
-                this.renderAuthState();
-                if (!user) return;
-                try {
-                  await this.bootstrapUserData();
-                  await this.restoreTimerFromCloud();
-                } catch (error) {
-                  console.error("Post-login bootstrap failed:", error);
-                  alert(
-                    "Login succeeded, but cloud data sync failed. Check Firestore rules and browser console.",
-                  );
-                }
-              },
-            );
-          }
+
+          this.initializeAuthObservers();
         }
 
         isAuthInitialized() {
@@ -2334,35 +2343,63 @@
         }
 
         bindAuthButtons() {
-          if (this.authHandlersBound) return;
-          this.authHandlersBound = true;
-
+          if (this.authButtonsBound) return;
+          this.authButtonsBound = true;
           this.app.elements["google-login-btn"]?.addEventListener(
             "click",
             async () => {
               const loginBtn = this.app.elements["google-login-btn"];
-              if (!window.FirebaseServices?.auth || !this.auth || !window.GoogleAuthModule?.startGoogleLogin) {
-                this.handleAuthError({
-                  code: "auth/dependencies-missing",
-                  message: "Google auth module is unavailable",
-                });
+              const isMobile = this.isMobileClient();
+
+              if (!this.auth || !window.FirebaseServices) {
+                alert("Login service is still initializing. Please try again in a moment.");
                 return;
               }
 
-              try {
-                await window.GoogleAuthModule.startGoogleLogin.call(
-                  window.GoogleAuthModule,
-                  {
+              const provider = this.buildGoogleProvider();
+
+              if (window.GoogleAuthModule?.startGoogleLogin) {
+                try {
+                  await window.GoogleAuthModule.startGoogleLogin({
                     auth: this.auth,
                     loginButton: loginBtn,
                     redirectLoginKey: this.redirectLoginKey,
                     googleAuthProvider: window.FirebaseServices.GoogleAuthProvider,
                     signInWithPopup: window.FirebaseServices.signInWithPopup,
                     signInWithRedirect: window.FirebaseServices.signInWithRedirect,
-                  },
-                );
+                  });
+                } catch (moduleError) {
+                  this.handleAuthError(moduleError);
+                }
+                return;
+              }
+
+              try {
+                await window.GoogleAuthModule.startGoogleLogin({
+                  auth: this.auth,
+                  loginButton: loginBtn,
+                  redirectLoginKey: this.redirectLoginKey,
+                  googleAuthProvider: window.FirebaseServices.GoogleAuthProvider,
+                  signInWithPopup: window.FirebaseServices.signInWithPopup,
+                  signInWithRedirect: window.FirebaseServices.signInWithRedirect,
+                });
               } catch (error) {
-                this.handleAuthError(error);
+                if (!this.shouldFallbackToRedirect(error)) {
+                  this.handleAuthError(error);
+                  return;
+                }
+
+                // Local fallback if auth module is unavailable.
+                const provider = this.buildGoogleProvider();
+                if (loginBtn) loginBtn.disabled = true;
+                try {
+                  await this.startRedirectLogin(provider);
+                } catch (redirectError) {
+                  sessionStorage.removeItem(this.redirectLoginKey);
+                  this.handleAuthError(redirectError);
+                }
+              } finally {
+                if (loginBtn) loginBtn.disabled = false;
               }
             },
           );
