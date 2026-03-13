@@ -2363,8 +2363,7 @@
                   sessionStorage.removeItem(this.redirectLoginKey);
                   this.handleAuthError(redirectError);
                 }
-              } finally {
-                if (loginBtn) loginBtn.disabled = false;
+                this.handleAuthError(error);
               }
             },
           );
