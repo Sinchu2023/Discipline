@@ -4777,6 +4777,7 @@
               shadowBuffDays: 0,
               userBuffDays: 0,
               lastProcessedDate: null,
+              manualMissionChecks: {},
             }
           );
         }
@@ -5375,6 +5376,17 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
               return `<div class="shadow-goal-item${doneCls}"><span${labelId}>${idx + 1}. ${this.escapeHtml(item.topic)}</span><input class="mission-check" type="checkbox" ${done ? "checked" : ""} disabled /></div>`;
             })
             .join("");
+
+          container.querySelectorAll(".mission-check").forEach((checkbox) => {
+            checkbox.addEventListener("change", (e) => {
+              const checkId = e.target.getAttribute("data-mission-check-id");
+              if (!checkId) return;
+              const checks = this.getTodayManualMissionChecks();
+              checks[checkId] = !!e.target.checked;
+              e.target.closest(".shadow-goal-item")?.classList.toggle("shadow-goal-done", !!e.target.checked);
+              this.saveTrainerState();
+            });
+          });
 
           const active = this.getActiveRoadmapDay();
           if (active) {
