@@ -6081,6 +6081,53 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           };
         }
 
+        formatHoursForTooltip(hours = 0) {
+          const safe = Math.max(0, Number(hours) || 0);
+          const minutes = Math.round(safe * 60);
+          const h = Math.floor(minutes / 60);
+          const m = minutes % 60;
+          return `${h}h ${String(m).padStart(2, "0")}m (${safe.toFixed(2)}h)`;
+        }
+
+        buildShadowSeries(labels, rangeDates) {
+          const minuteByDate = new Map();
+          this.app.state.tasks.forEach((task) => {
+            if (
+              !task ||
+              !task.date ||
+              !this.passesProductivityFilter(task, "productivity")
+            )
+              return;
+            minuteByDate.set(
+              task.date,
+              (minuteByDate.get(task.date) || 0) + Number(task.duration || 0),
+            );
+          });
+
+          const shadowHours = rangeDates.map((dateStr) => {
+            const date = new Date(dateStr);
+            let total = 0;
+            for (let i = 0; i < 7; i++) {
+              const d = new Date(date);
+              d.setDate(date.getDate() - i);
+              const key = this.app.getDateString(d);
+              total += minuteByDate.get(key) || 0;
+            }
+            return parseFloat((total / 7 / 60).toFixed(2));
+          });
+
+          if (!shadowHours.some((v) => v > 0)) {
+            const fallback = parseFloat(
+              (
+                Math.max(0, Number(this.app.shadowEngine?.shadowSevenDayAverage || 0)) /
+                60
+              ).toFixed(2),
+            );
+            return Array.from({ length: labels.length }, () => fallback);
+          }
+          return shadowHours;
+        }
+
         getCurrentFilteredTotalMinutes() {
           const range = this.app.elements["prod-range"].value;
           const rangeDates = this.getRangeDates(range);
