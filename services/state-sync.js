@@ -13,8 +13,8 @@
 
     tick() {
       const snapshot = this.stateManager.getSnapshot();
-      window.ShadowPanel.sync();
-      window.AnalyticsInsights.sync();
+      window.ShadowPanel?.sync?.();
+      window.AnalyticsInsights?.sync?.();
       this.syncMission(snapshot);
       this.syncTrainer(snapshot);
     }

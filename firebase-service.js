@@ -111,6 +111,9 @@ export async function writeUserState(services, uid, key, value) {
 
 // Expose globally for existing non-module app code compatibility.
 window.FirebaseServices = initializeFirebaseServices();
+if (window.FirebaseServices) {
+  window.dispatchEvent(new Event("firebase-services-ready"));
+}
 window.FirebaseServiceModule = {
   initializeFirebaseServices,
   loadUserData,
