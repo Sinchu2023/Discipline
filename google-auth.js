@@ -80,4 +80,8 @@ export async function startGoogleLogin({
 }
 
 // Expose globally so existing inline app code can call it without a full rewrite.
-window.GoogleAuthModule = { startGoogleLogin };
+window.GoogleAuthModule = {
+  isMobileClient,
+  shouldFallbackToRedirect,
+  startGoogleLogin,
+};
