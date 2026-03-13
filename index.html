@@ -1755,7 +1755,7 @@
       // ==============================================
       const CONFIG = {
         DB_SCHEMA_VERSION: 2,
-        CLIENT_VERSION: "2026.03.12.4",
+        CLIENT_VERSION: "2026.03.12.5",
         DAILY_PRODUCTIVITY_THRESHOLD_MINUTES: 240,
         DISTRACTION_BUDGET_MINUTES: 90,
         STORAGE_KEYS: {
@@ -2305,48 +2305,63 @@
           );
         }
 
+        isAuthInitialized() {
+          return !!(this.auth && window.FirebaseServices);
+        }
+
+        shouldBlockLoginOnFileProtocol() {
+          return location.protocol === "file:";
+        }
+
+        isMobileClient() {
+          return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+        }
+
+        buildGoogleProvider() {
+          const provider = new window.FirebaseServices.GoogleAuthProvider();
+          provider.setCustomParameters({ prompt: "select_account" });
+          return provider;
+        }
+
+        shouldFallbackToRedirect(error) {
+          const code = error?.code || "";
+          const nonRecoverableCodes = new Set([
+            "auth/unauthorized-domain",
+            "auth/operation-not-allowed",
+            "auth/invalid-api-key",
+            "auth/app-not-authorized",
+          ]);
+          return !nonRecoverableCodes.has(code);
+        }
+
+        async startRedirectLogin(provider) {
+          sessionStorage.setItem(this.redirectLoginKey, "1");
+          await window.FirebaseServices.signInWithRedirect(this.auth, provider);
+        }
+
         bindAuthButtons() {
           this.app.elements["google-login-btn"]?.addEventListener(
             "click",
             async () => {
-              if (!this.auth || !window.FirebaseServices) {
+              if (!this.isAuthInitialized()) {
                 alert("Login service is still initializing. Please try again in a moment.");
                 return;
               }
 
-              if (location.protocol === "file:") {
+              if (this.shouldBlockLoginOnFileProtocol()) {
                 alert(
                   "Google Login cannot run from file://. Please open this app via http://localhost (for example: python3 -m http.server 5500, then open http://localhost:5500).",
                 );
                 return;
               }
 
-              const provider =
-                new window.FirebaseServices.GoogleAuthProvider();
-              provider.setCustomParameters({ prompt: "select_account" });
-
-              const shouldFallbackToRedirect = (error) => {
-                const code = error?.code || "";
-                const nonRecoverableCodes = new Set([
-                  "auth/unauthorized-domain",
-                  "auth/operation-not-allowed",
-                  "auth/invalid-api-key",
-                  "auth/app-not-authorized",
-                ]);
-                return !nonRecoverableCodes.has(code);
-              };
-
-              const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+              const provider = this.buildGoogleProvider();
               const loginBtn = this.app.elements["google-login-btn"];
               if (loginBtn) loginBtn.disabled = true;
 
               try {
-                if (isMobile) {
-                  sessionStorage.setItem(this.redirectLoginKey, "1");
-                  await window.FirebaseServices.signInWithRedirect(
-                    this.auth,
-                    provider,
-                  );
+                if (this.isMobileClient()) {
+                  await this.startRedirectLogin(provider);
                   return;
                 }
 
@@ -2356,16 +2371,12 @@
                   provider,
                 );
               } catch (error) {
-                if (!shouldFallbackToRedirect(error)) {
+                if (!this.shouldFallbackToRedirect(error)) {
                   this.handleAuthError(error);
                   return;
                 }
                 try {
-                  sessionStorage.setItem(this.redirectLoginKey, "1");
-                  await window.FirebaseServices.signInWithRedirect(
-                    this.auth,
-                    provider,
-                  );
+                  await this.startRedirectLogin(provider);
                 } catch (redirectError) {
                   sessionStorage.removeItem(this.redirectLoginKey);
                   this.handleAuthError(redirectError);
@@ -3064,26 +3075,20 @@
           this.tickIntervalId = null;
         }
 
-        collectEntryMetadata(taskName, forceCategory = null) {
-          const description = (
-            this.app.elements["task-input"].value.trim() ||
-            taskName ||
-            ""
-          ).slice(0, 120);
+        getTaskInputValue() {
+          return (this.app.elements["task-input"]?.value || "").trim();
+        }
 
-          if (forceCategory) {
-            const category = this.app.resolveCategory(forceCategory) || "Productive Work";
-            const subList = CATEGORY_DEFINITIONS[category] || ["General"];
-            return { category, subcategory: subList[0] || "General", description };
-          }
-
+        promptForCategory() {
           const categoryInput = window.prompt(
             "Choose task category: Productive Work / Study / Physical Training / Time Waste / Sleep / Miscellaneous",
             "Productive Work",
           );
           if (categoryInput === null) return null;
+          return this.app.resolveCategory(categoryInput.trim()) || "Productive Work";
+        }
 
-          const category = this.app.resolveCategory(categoryInput.trim()) || "Productive Work";
+        promptForSubcategory(category) {
           const subList = CATEGORY_DEFINITIONS[category] || ["General"];
           const defaultSubcategory = subList[0] || "General";
           const subcategoryInput = window.prompt(
@@ -3091,14 +3096,32 @@
             defaultSubcategory,
           );
           if (subcategoryInput === null) return null;
+          return (subcategoryInput.trim() || defaultSubcategory).slice(0, 60);
+        }
 
-          const sanitizedSubcategory = (subcategoryInput.trim() || defaultSubcategory).slice(0, 60);
-          return { category, subcategory: sanitizedSubcategory, description };
+        collectEntryMetadata(taskName, forceCategory = null) {
+          const description = (
+            this.getTaskInputValue() ||
+            taskName ||
+            ""
+          ).slice(0, 120);
+
+          const category = forceCategory
+            ? this.app.resolveCategory(forceCategory) || "Productive Work"
+            : this.promptForCategory();
+          if (!category) return null;
+
+          const subcategory = forceCategory
+            ? (CATEGORY_DEFINITIONS[category]?.[0] || "General")
+            : this.promptForSubcategory(category);
+          if (!subcategory) return null;
+
+          return { category, subcategory, description };
         }
         start(taskName = null, meta = null) {
           if (this.isRunning)
             return alert("A task is already running. Stop it first.");
-          const rawName = (taskName || this.app.elements["task-input"].value || "").trim();
+          const rawName = (taskName || this.getTaskInputValue() || "").trim();
           if (!meta && !rawName) {
             alert("Task name cannot be empty.");
             return;
