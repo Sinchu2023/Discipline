@@ -2305,6 +2305,40 @@
           );
         }
 
+        isAuthInitialized() {
+          return !!(this.auth && window.FirebaseServices);
+        }
+
+        shouldBlockLoginOnFileProtocol() {
+          return location.protocol === "file:";
+        }
+
+        isMobileClient() {
+          return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+        }
+
+        buildGoogleProvider() {
+          const provider = new window.FirebaseServices.GoogleAuthProvider();
+          provider.setCustomParameters({ prompt: "select_account" });
+          return provider;
+        }
+
+        shouldFallbackToRedirect(error) {
+          const code = error?.code || "";
+          const nonRecoverableCodes = new Set([
+            "auth/unauthorized-domain",
+            "auth/operation-not-allowed",
+            "auth/invalid-api-key",
+            "auth/app-not-authorized",
+          ]);
+          return !nonRecoverableCodes.has(code);
+        }
+
+        async startRedirectLogin(provider) {
+          sessionStorage.setItem(this.redirectLoginKey, "1");
+          await window.FirebaseServices.signInWithRedirect(this.auth, provider);
+        }
+
         bindAuthButtons() {
           this.app.elements["google-login-btn"]?.addEventListener(
             "click",
@@ -2348,11 +2382,7 @@
                   return;
                 }
                 try {
-                  sessionStorage.setItem(this.redirectLoginKey, "1");
-                  await window.FirebaseServices.signInWithRedirect(
-                    this.auth,
-                    provider,
-                  );
+                  await this.startRedirectLogin(provider);
                 } catch (redirectError) {
                   sessionStorage.removeItem(this.redirectLoginKey);
                   this.handleAuthError(redirectError);
@@ -3051,23 +3081,58 @@
           this.tickIntervalId = null;
         }
 
-        collectEntryMetadata(taskName, forceCategory = null) {
-          const defaultCategory = forceCategory || "Productive Work";
-          const category = this.app.resolveCategory(defaultCategory) || defaultCategory;
+        getTaskInputValue() {
+          return (this.app.elements["task-input"]?.value || "").trim();
+        }
+
+        promptForCategory() {
+          const categoryInput = window.prompt(
+            "Choose task category: Productive Work / Study / Physical Training / Time Waste / Sleep / Miscellaneous",
+            "Productive Work",
+          );
+          if (categoryInput === null) return null;
+          return this.app.resolveCategory(categoryInput.trim()) || "Productive Work";
+        }
+
+        promptForSubcategory(category) {
           const subList = CATEGORY_DEFINITIONS[category] || ["General"];
-          const subcategory = subList[0] || "General";
+          const defaultSubcategory = subList[0] || "General";
+          const subcategoryInput = window.prompt(
+            `Choose subcategory for ${category} (${subList.join(" / ")})`,
+            defaultSubcategory,
+          );
+          if (subcategoryInput === null) return null;
+          return (subcategoryInput.trim() || defaultSubcategory).slice(0, 60);
+        }
+
+        collectEntryMetadata(taskName, forceCategory = null) {
           const description = (
-            this.app.elements["task-input"].value.trim() ||
+            this.getTaskInputValue() ||
             taskName ||
             ""
           ).slice(0, 120);
+
+          const category = forceCategory
+            ? this.app.resolveCategory(forceCategory) || "Productive Work"
+            : this.promptForCategory();
+          if (!category) return null;
+
+          const subcategory = forceCategory
+            ? (CATEGORY_DEFINITIONS[category]?.[0] || "General")
+            : this.promptForSubcategory(category);
+          if (!subcategory) return null;
+
           return { category, subcategory, description };
         }
         start(taskName = null, meta = null) {
           if (this.isRunning)
             return alert("A task is already running. Stop it first.");
-          const rawName = taskName || this.app.elements["task-input"].value.trim();
-          const name = rawName || "Focused Session";
+          const rawName = (taskName || this.getTaskInputValue() || "").trim();
+          if (!meta && !rawName) {
+            alert("Task name cannot be empty.");
+            return;
+          }
+          const name = rawName;
           const resolvedMeta = meta || this.collectEntryMetadata(name, null);
           if (!resolvedMeta) return;
           this.startTime = Date.now();
