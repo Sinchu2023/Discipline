@@ -517,7 +517,7 @@
       }
       .shadow-goal-item {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto auto;
+        grid-template-columns: minmax(0, 1fr) auto;
         align-items: center;
         gap: 0.6rem;
         font-size: 0.84rem;
@@ -529,21 +529,10 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      .shadow-goal-item .mission-start-btn {
-        width: 38px;
-        min-width: 38px;
-        height: 34px;
-        padding: 0;
-        justify-content: center;
-        align-items: center;
-        font-size: 1rem;
-        line-height: 1;
-      }
-      .shadow-goal-item strong {
-        color: var(--text-accent);
-        font-weight: 600;
-        min-width: 110px;
-        text-align: right;
+      .shadow-goal-item .mission-check {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--success);
       }
       .shadow-goal-done {
         color: var(--success) !important;
@@ -1381,43 +1370,19 @@
               <div class="shadow-goal-list">
                 <div class="shadow-goal-item">
                   <span id="mission-task-1">1. Basic Semiconductor Physics</span
-                  ><button
-                    class="btn btn-secondary mission-start-btn"
-                    data-mission-index="0"
-                    title="Start mission task"
-                  >
-                    ⭐</button
-                  ><strong id="goal-nptel">0h 00m • 0/1</strong>
+                  ><input class="mission-check" type="checkbox" disabled />
                 </div>
                 <div class="shadow-goal-item">
                   <span id="mission-task-2">2. Different Models of Diodes</span
-                  ><button
-                    class="btn btn-secondary mission-start-btn"
-                    data-mission-index="1"
-                    title="Start mission task"
-                  >
-                    ⭐</button
-                  ><strong id="goal-yt">0h 00m • 0/1</strong>
+                  ><input class="mission-check" type="checkbox" disabled />
                 </div>
                 <div class="shadow-goal-item">
                   <span id="mission-task-3">3. Project Work</span
-                  ><button
-                    class="btn btn-secondary mission-start-btn"
-                    data-mission-index="2"
-                    title="Start mission task"
-                  >
-                    ⭐</button
-                  ><strong id="goal-project">0h 00m • 0/1</strong>
+                  ><input class="mission-check" type="checkbox" disabled />
                 </div>
                 <div class="shadow-goal-item">
                   <span id="mission-task-4">4. Revision</span
-                  ><button
-                    class="btn btn-secondary mission-start-btn"
-                    data-mission-index="3"
-                    title="Start mission task"
-                  >
-                    ⭐</button
-                  ><strong id="goal-revision">Pending</strong>
+                  ><input class="mission-check" type="checkbox" disabled />
                 </div>
               </div>
               <div class="shadow-line">
@@ -2222,6 +2187,9 @@
           this.db = null;
           this.user = null;
           this.redirectLoginKey = "discipline_google_redirect_started";
+          this.authHandlersBound = false;
+          this.authListenerAttached = false;
+          this.authStateUnsub = null;
         }
 
         get isReady() {
@@ -2263,6 +2231,19 @@
 
         async initialize() {
           if (!window.FirebaseServices) {
+            await new Promise((resolve) => {
+              const timeoutId = setTimeout(resolve, 1200);
+              window.addEventListener(
+                "firebase-services-ready",
+                () => {
+                  clearTimeout(timeoutId);
+                  resolve();
+                },
+                { once: true },
+              );
+            });
+          }
+          if (!window.FirebaseServices) {
             console.warn(
               "Firebase services not configured. Running local-only mode.",
             );
@@ -2282,27 +2263,31 @@
           } catch (error) {
             this.handleAuthError(error);
           }
-          window.FirebaseServices.onAuthStateChanged(
-            this.auth,
-            async (user) => {
-              this.stopLeaderLoop();
-              this.detachTimerListener();
-              this.detachTasksListener();
-              this.user = user || null;
-              if (user) sessionStorage.removeItem(this.redirectLoginKey);
-              this.renderAuthState();
-              if (!user) return;
-              try {
-                await this.bootstrapUserData();
-                await this.restoreTimerFromCloud();
-              } catch (error) {
-                console.error("Post-login bootstrap failed:", error);
-                alert(
-                  "Login succeeded, but cloud data sync failed. Check Firestore rules and browser console.",
-                );
-              }
-            },
-          );
+          if (!this.authListenerAttached) {
+            this.authListenerAttached = true;
+            this.authStateUnsub = window.FirebaseServices.onAuthStateChanged(
+              this.auth,
+              async (user) => {
+                console.log("Auth state:", user?.uid || "logged out");
+                this.stopLeaderLoop();
+                this.detachTimerListener();
+                this.detachTasksListener();
+                this.user = user || null;
+                if (user) sessionStorage.removeItem(this.redirectLoginKey);
+                this.renderAuthState();
+                if (!user) return;
+                try {
+                  await this.bootstrapUserData();
+                  await this.restoreTimerFromCloud();
+                } catch (error) {
+                  console.error("Post-login bootstrap failed:", error);
+                  alert(
+                    "Login succeeded, but cloud data sync failed. Check Firestore rules and browser console.",
+                  );
+                }
+              },
+            );
+          }
         }
 
         isAuthInitialized() {
@@ -2313,86 +2298,36 @@
           return location.protocol === "file:";
         }
 
-        isMobileClient() {
-          return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
-        }
-
-        buildGoogleProvider() {
-          const provider = new window.FirebaseServices.GoogleAuthProvider();
-          provider.setCustomParameters({ prompt: "select_account" });
-          return provider;
-        }
-
-        shouldFallbackToRedirect(error) {
-          const code = error?.code || "";
-          const nonRecoverableCodes = new Set([
-            "auth/unauthorized-domain",
-            "auth/operation-not-allowed",
-            "auth/invalid-api-key",
-            "auth/app-not-authorized",
-          ]);
-          return !nonRecoverableCodes.has(code);
-        }
-
-        async startRedirectLogin(provider) {
-          sessionStorage.setItem(this.redirectLoginKey, "1");
-          await window.FirebaseServices.signInWithRedirect(this.auth, provider);
-        }
-
         bindAuthButtons() {
+          if (this.authHandlersBound) return;
+          this.authHandlersBound = true;
+
           this.app.elements["google-login-btn"]?.addEventListener(
             "click",
             async () => {
-              if (!this.auth || !window.FirebaseServices) {
-                alert("Login service is still initializing. Please try again in a moment.");
+              const loginBtn = this.app.elements["google-login-btn"];
+              if (!window.FirebaseServices?.auth || !this.auth || !window.GoogleAuthModule?.startGoogleLogin) {
+                this.handleAuthError({
+                  code: "auth/dependencies-missing",
+                  message: "Google auth module is unavailable",
+                });
                 return;
               }
-              const provider =
-                new window.FirebaseServices.GoogleAuthProvider();
-              provider.setCustomParameters({ prompt: "select_account" });
-              const shouldFallbackToRedirect = (error) => {
-                const code = error?.code || "";
-                const nonRecoverableCodes = new Set([
-                  "auth/unauthorized-domain",
-                  "auth/operation-not-allowed",
-                  "auth/invalid-api-key",
-                  "auth/app-not-authorized",
-                ]);
-                return !nonRecoverableCodes.has(code);
-              };
 
               try {
-                if (isMobile) {
-                  sessionStorage.setItem(this.redirectLoginKey, "1");
-                  await window.FirebaseServices.signInWithRedirect(
-                    this.auth,
-                    provider,
-                  );
-                  return;
-                }
-
-                // Prefer popup first on desktop for faster auth completion.
-                await window.FirebaseServices.signInWithPopup(
-                  this.auth,
-                  provider,
+                await window.GoogleAuthModule.startGoogleLogin.call(
+                  window.GoogleAuthModule,
+                  {
+                    auth: this.auth,
+                    loginButton: loginBtn,
+                    redirectLoginKey: this.redirectLoginKey,
+                    googleAuthProvider: window.FirebaseServices.GoogleAuthProvider,
+                    signInWithPopup: window.FirebaseServices.signInWithPopup,
+                    signInWithRedirect: window.FirebaseServices.signInWithRedirect,
+                  },
                 );
               } catch (error) {
-                if (!shouldFallbackToRedirect(error)) {
-                  this.handleAuthError(error);
-                  return;
-                }
-
-                // Local fallback if auth module is unavailable.
-                const provider = this.buildGoogleProvider();
-                if (loginBtn) loginBtn.disabled = true;
-                try {
-                  await this.startRedirectLogin(provider);
-                } catch (redirectError) {
-                  sessionStorage.removeItem(this.redirectLoginKey);
-                  this.handleAuthError(redirectError);
-                }
-              } finally {
-                if (loginBtn) loginBtn.disabled = false;
+                this.handleAuthError(error);
               }
             },
           );
@@ -2484,6 +2419,7 @@
             "auth/unauthorized-domain": "This domain is not authorized in Firebase Authentication settings.",
             "auth/operation-not-allowed": "Google sign-in is not enabled for this Firebase project.",
             "auth/operation-not-supported-in-this-environment": "Your browser environment blocked popup login. Redirect login will be used instead.",
+            "auth/dependencies-missing": "Login services are not fully initialized. Refresh the page and try again.",
           };
           const message =
             messageByCode[code] ||
@@ -2665,6 +2601,12 @@
           this.timerUnsub = null;
         }
 
+        detachTasksListener() {
+          if (!this.tasksUnsub) return;
+          this.tasksUnsub();
+          this.tasksUnsub = null;
+        }
+
         async syncTaskUpsert(task) {
           if (!this.isReady || !task?.id) return;
           const normalized = this.app.normalizeTask(task);
@@ -2791,9 +2733,6 @@
             "shadow-distraction-budget",
             "shadow-win-ladder",
             "shadow-mission-score",
-            "goal-nptel",
-            "goal-yt",
-            "goal-project",
             "flow-blockers-status",
             "flow-proneness-status",
             "flow-triggers-status",
@@ -2812,7 +2751,6 @@
             "mission-task-2",
             "mission-task-3",
             "mission-task-4",
-            "goal-revision",
             "shadow-standard-metric",
             "shadow-momentum-score",
             "shadow-consistency-index",
@@ -4277,26 +4215,6 @@
           };
         }
 
-        formatGoalProgress(goal, progress) {
-          const minutesText = this.app.formatDuration(progress.minutes);
-          if (goal.sessionsTarget > 0)
-            return `${minutesText} • ${progress.sessions}/${goal.sessionsTarget}`;
-          return minutesText;
-        }
-
-        applyGoalStatus(elementId, goal, progress) {
-          const el = this.app.elements[elementId];
-          if (!el) return;
-          const hitMinutes = progress.minutes >= goal.minutesTarget;
-          const hitSessions =
-            goal.sessionsTarget > 0
-              ? progress.sessions >= goal.sessionsTarget
-              : true;
-          const done = hitMinutes && hitSessions;
-          el.textContent = this.formatGoalProgress(goal, progress);
-          el.classList.toggle("shadow-goal-done", done);
-        }
-
         buildDailyProductiveSeries() {
           const dailyMap = this.getDailyProductiveMap();
           if (dailyMap.size === 0) return [];
@@ -4745,36 +4663,6 @@
               ? `You lead monthly by ${Math.abs(scoreDiff)} day-win(s); hold at least ${this.app.formatDuration(defenseTarget)} tomorrow. Mission ${missionScore}/100.`
               : `You are behind by ${this.app.formatDuration(neededTie)} today and ${Math.abs(scoreDiff)} monthly day-win(s). Mission ${missionScore}/100.`;
 
-          this.applyGoalStatus(
-            "goal-nptel",
-            CONFIG.DAILY_GOALS[0],
-            goalProgress.nptel || {
-              minutes: 0,
-              sessions: 0,
-              minutesTarget: 120,
-              sessionsTarget: 2,
-            },
-          );
-          this.applyGoalStatus(
-            "goal-yt",
-            CONFIG.DAILY_GOALS[1],
-            goalProgress.yt || {
-              minutes: 0,
-              sessions: 0,
-              minutesTarget: 120,
-              sessionsTarget: 2,
-            },
-          );
-          this.applyGoalStatus(
-            "goal-project",
-            CONFIG.DAILY_GOALS[2],
-            goalProgress.project || {
-              minutes: 0,
-              sessions: 0,
-              minutesTarget: 180,
-              sessionsTarget: 0,
-            },
-          );
 
           if (this.app.trainerEngine?.syncMissionFromRoadmap)
             this.app.trainerEngine.syncMissionFromRoadmap();
@@ -5432,30 +5320,6 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           ].slice(0, 4);
         }
 
-        startMissionTask(index) {
-          const tasks = this.getDailyMissionTasks();
-          const item = tasks[index];
-          if (!item || !item.topic) return;
-          if (item.type === "revision" && !item.active) {
-            alert("Revision unlocks after all learning tasks are completed.");
-            return;
-          }
-          if (this.app.stopwatch.isRunning) {
-            alert("A task is already running. Stop it first.");
-            return;
-          }
-
-          this.app.elements["task-input"].value = item.topic;
-          this.app.stopwatch.start(item.topic, {
-            category: "Productive Work",
-            subcategory: "Analog",
-            description: `Topic: ${item.topic}`,
-            missionTopic: item.topic,
-            missionType: item.type,
-            sourceAgnostic: true,
-          });
-        }
-
         syncMissionFromRoadmap() {
           const tasks = this.getDailyMissionTasks();
           const container = document.querySelector(".shadow-goal-list");
@@ -5467,27 +5331,12 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
             "mission-task-3",
             "mission-task-4",
           ];
-          const valueIds = [
-            "goal-nptel",
-            "goal-yt",
-            "goal-project",
-            "goal-revision",
-          ];
-
           container.innerHTML = tasks
             .map((item, idx) => {
-              const threshold =
-                item.progress?.threshold ||
-                this.getThresholdForTopic(item.topic);
               const done = !!item.done;
-              const disabled = item.type === "revision" && !item.active;
-              const valueText = disabled
-                ? "Pending"
-                : `${this.app.formatDuration(item.progress?.minutes || 0)} / ${this.app.formatDuration(threshold)}`;
               const labelId = idx < 4 ? ` id="${taskIds[idx]}"` : "";
-              const valueId = idx < 4 ? ` id="${valueIds[idx]}"` : "";
               const doneCls = done ? " shadow-goal-done" : "";
-              return `<div class="shadow-goal-item"><span${labelId}>${idx + 1}. ${this.escapeHtml(item.topic)}</span><button class="btn btn-secondary mission-start-btn" data-mission-index="${idx}" ${disabled ? "disabled" : ""} title="Start mission task">⭐</button><strong${valueId} class="${doneCls.trim()}">${this.escapeHtml(valueText)}</strong></div>`;
+              return `<div class="shadow-goal-item${doneCls}"><span${labelId}>${idx + 1}. ${this.escapeHtml(item.topic)}</span><input class="mission-check" type="checkbox" ${done ? "checked" : ""} disabled /></div>`;
             })
             .join("");
 
@@ -6236,13 +6085,6 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
             if (e.key === "Enter" && !this.app.stopwatch.isRunning)
               this.app.stopwatch.start();
           });
-          document.addEventListener("click", (e) => {
-            const btn = e.target.closest?.(".mission-start-btn");
-            if (!btn) return;
-            const idx = Number(btn.getAttribute("data-mission-index") || -1);
-            if (idx < 0) return;
-            this.app.trainerEngine.startMissionTask(idx);
-          });
           this.app.elements["view-report"].addEventListener("click", () =>
             this.app.uiManager.showReport(),
           );
@@ -6353,8 +6195,8 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
     </script>
 
     <script src="update-check.js"></script>
-    <script type="module" src="firebase-service.js"></script>
-    <script type="module" src="google-auth.js"></script>
-    <script type="module" src="app.js"></script>
+    <script type="module" src="firebase-service.js?v=2026-03-13-authfix1"></script>
+    <script type="module" src="google-auth.js?v=2026-03-13-authfix1"></script>
+    <script type="module" src="app.js?v=2026-03-13-authfix1"></script>
   </body>
 </html>
