@@ -1,7 +1,6 @@
 # Discipline Tracker Pro
 
 A professional, feature-rich task and sleep tracking web application built with vanilla HTML, CSS, and JavaScript. Track your productivity, monitor sleep patterns, maintain daily discipline streaks, and compete against your SHADOW - all in your browser with local data persistence. 
-{{{{{BUT MAKE SURE TO GIVE THE CREDIT }}}}
 ## 🎯 Features
 
 ### ⏱️ Time Tracking
@@ -150,7 +149,7 @@ The SHADOW Engine analyzes your complete historical data:
 
 ### Installation
 1. Clone or download this repository
-2. Open `Discipline.html` in your web browser
+2. Open `index.html` in your web browser
 3. No build process, no dependencies, no installation required!
 
 ### Usage
@@ -260,7 +259,6 @@ The application automatically adapts to different screen sizes with optimized la
 
 Free to use, modify, and distribute. No attribution required.
 
-{{{{{BUT MAKE SURE TO GIVE THE CREDIT }}}}
 
 ---
 
