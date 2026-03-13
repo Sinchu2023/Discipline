@@ -2342,32 +2342,6 @@
           return location.protocol === "file:";
         }
 
-        isMobileClient() {
-          return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
-        }
-
-        buildGoogleProvider() {
-          const provider = new window.FirebaseServices.GoogleAuthProvider();
-          provider.setCustomParameters({ prompt: "select_account" });
-          return provider;
-        }
-
-        shouldFallbackToRedirect(error) {
-          const code = error?.code || "";
-          const nonRecoverableCodes = new Set([
-            "auth/unauthorized-domain",
-            "auth/operation-not-allowed",
-            "auth/invalid-api-key",
-            "auth/app-not-authorized",
-          ]);
-          return !nonRecoverableCodes.has(code);
-        }
-
-        async startRedirectLogin(provider) {
-          sessionStorage.setItem(this.redirectLoginKey, "1");
-          await window.FirebaseServices.signInWithRedirect(this.auth, provider);
-        }
-
         bindAuthButtons() {
           if (this.authButtonsBound) return;
           this.authButtonsBound = true;
@@ -2401,20 +2375,14 @@
               }
 
               try {
-                if (isMobile) {
-                  sessionStorage.setItem(this.redirectLoginKey, "1");
-                  await window.FirebaseServices.signInWithRedirect(
-                    this.auth,
-                    provider,
-                  );
-                  return;
-                }
-
-                // Prefer popup first on desktop for faster auth completion.
-                await window.FirebaseServices.signInWithPopup(
-                  this.auth,
-                  provider,
-                );
+                await window.GoogleAuthModule.startGoogleLogin({
+                  auth: this.auth,
+                  loginButton: loginBtn,
+                  redirectLoginKey: this.redirectLoginKey,
+                  googleAuthProvider: window.FirebaseServices.GoogleAuthProvider,
+                  signInWithPopup: window.FirebaseServices.signInWithPopup,
+                  signInWithRedirect: window.FirebaseServices.signInWithRedirect,
+                });
               } catch (error) {
                 if (!this.shouldFallbackToRedirect(error)) {
                   this.handleAuthError(error);
@@ -2523,6 +2491,7 @@
             "auth/unauthorized-domain": "This domain is not authorized in Firebase Authentication settings.",
             "auth/operation-not-allowed": "Google sign-in is not enabled for this Firebase project.",
             "auth/operation-not-supported-in-this-environment": "Your browser environment blocked popup login. Redirect login will be used instead.",
+            "auth/dependencies-missing": "Login services are not fully initialized. Refresh the page and try again.",
           };
           const message =
             messageByCode[code] ||
@@ -2702,6 +2671,12 @@
           if (!this.timerUnsub) return;
           this.timerUnsub();
           this.timerUnsub = null;
+        }
+
+        detachTasksListener() {
+          if (!this.tasksUnsub) return;
+          this.tasksUnsub();
+          this.tasksUnsub = null;
         }
 
         async syncTaskUpsert(task) {
