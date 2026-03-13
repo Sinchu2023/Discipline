@@ -1755,7 +1755,7 @@
       // ==============================================
       const CONFIG = {
         DB_SCHEMA_VERSION: 2,
-        CLIENT_VERSION: "2026.03.12.2",
+        CLIENT_VERSION: "2026.03.12.3",
         DAILY_PRODUCTIVITY_THRESHOLD_MINUTES: 240,
         DISTRACTION_BUDGET_MINUTES: 90,
         STORAGE_KEYS: {
@@ -2309,25 +2309,54 @@
           this.app.elements["google-login-btn"]?.addEventListener(
             "click",
             async () => {
+              if (!this.auth || !window.FirebaseServices) {
+                alert("Login service is still initializing. Please try again in a moment.");
+                return;
+              }
+
+              if (location.protocol === "file:") {
+                alert(
+                  "Google Login cannot run from file://. Please open this app via http://localhost (for example: python3 -m http.server 5500, then open http://localhost:5500).",
+                );
+                return;
+              }
+
               const provider =
                 new window.FirebaseServices.GoogleAuthProvider();
               provider.setCustomParameters({ prompt: "select_account" });
-              // Redirect is more reliable in browsers with strict popup/COOP policies.
-              const useRedirectPreferred = true;
+
+              const shouldFallbackToRedirect = (error) => {
+                const code = error?.code || "";
+                const nonRecoverableCodes = new Set([
+                  "auth/unauthorized-domain",
+                  "auth/operation-not-allowed",
+                  "auth/invalid-api-key",
+                  "auth/app-not-authorized",
+                ]);
+                return !nonRecoverableCodes.has(code);
+              };
+
+              const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+              const loginBtn = this.app.elements["google-login-btn"];
+              if (loginBtn) loginBtn.disabled = true;
+
               try {
-                // Prefer popup first for faster auth completion and fewer redirect edge cases.
+                if (isMobile) {
+                  sessionStorage.setItem(this.redirectLoginKey, "1");
+                  await window.FirebaseServices.signInWithRedirect(
+                    this.auth,
+                    provider,
+                  );
+                  return;
+                }
+
+                // Prefer popup first on desktop for faster auth completion.
                 await window.FirebaseServices.signInWithPopup(
                   this.auth,
                   provider,
                 );
               } catch (error) {
-                const popupFallbackCodes = new Set([
-                  "auth/popup-blocked",
-                  "auth/popup-closed-by-user",
-                  "auth/cancelled-popup-request",
-                  "auth/operation-not-supported-in-this-environment",
-                ]);
-                if (!popupFallbackCodes.has(error?.code)) {
+                if (!shouldFallbackToRedirect(error)) {
                   this.handleAuthError(error);
                   return;
                 }
@@ -2341,6 +2370,8 @@
                   sessionStorage.removeItem(this.redirectLoginKey);
                   this.handleAuthError(redirectError);
                 }
+              } finally {
+                if (loginBtn) loginBtn.disabled = false;
               }
             },
           );
@@ -2431,6 +2462,7 @@
             "auth/network-request-failed": "Network error during login. Check your internet connection and retry.",
             "auth/unauthorized-domain": "This domain is not authorized in Firebase Authentication settings.",
             "auth/operation-not-allowed": "Google sign-in is not enabled for this Firebase project.",
+            "auth/operation-not-supported-in-this-environment": "This browser environment does not support Firebase Google login here. If you opened the app from file://, run it on http://localhost first.",
           };
           const message =
             messageByCode[code] ||
