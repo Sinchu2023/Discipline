@@ -1370,19 +1370,19 @@
               <div class="shadow-goal-list">
                 <div class="shadow-goal-item">
                   <span id="mission-task-1">1. Basic Semiconductor Physics</span
-                  ><input class="mission-check" type="checkbox" />
+                  ><input class="mission-check" type="checkbox" disabled />
                 </div>
                 <div class="shadow-goal-item">
                   <span id="mission-task-2">2. Different Models of Diodes</span
-                  ><input class="mission-check" type="checkbox" />
+                  ><input class="mission-check" type="checkbox" disabled />
                 </div>
                 <div class="shadow-goal-item">
                   <span id="mission-task-3">3. Project Work</span
-                  ><input class="mission-check" type="checkbox" />
+                  ><input class="mission-check" type="checkbox" disabled />
                 </div>
                 <div class="shadow-goal-item">
                   <span id="mission-task-4">4. Revision</span
-                  ><input class="mission-check" type="checkbox" />
+                  ><input class="mission-check" type="checkbox" disabled />
                 </div>
               </div>
               <div class="shadow-line">
@@ -2187,9 +2187,8 @@
           this.db = null;
           this.user = null;
           this.redirectLoginKey = "discipline_google_redirect_started";
-          this.authHandlersBound = false;
-          this.authListenerAttached = false;
-          this.authStateUnsub = null;
+          this.authButtonsBound = false;
+          this.firebaseReadyListenerBound = false;
         }
 
         get isReady() {
@@ -2216,6 +2215,50 @@
           window.FirebaseServices.__instrumented = true;
         }
 
+        attachFirebaseServicesIfAvailable() {
+          if (!window.FirebaseServices) return false;
+          this.auth = window.FirebaseServices.auth;
+          this.db = window.FirebaseServices.db;
+          return !!(this.auth && this.db);
+        }
+
+        bindFirebaseReadyListener() {
+          if (this.firebaseReadyListenerBound) return;
+          this.firebaseReadyListenerBound = true;
+          window.addEventListener("firebase-services-ready", () => {
+            if (this.auth) return;
+            if (!this.attachFirebaseServicesIfAvailable()) return;
+            this.initializeAuthObservers();
+          });
+        }
+
+        initializeAuthObservers() {
+          if (!this.auth || !window.FirebaseServices) return;
+          if (this.authObserverInitialized) return;
+          this.authObserverInitialized = true;
+          window.FirebaseServices.onAuthStateChanged(
+            this.auth,
+            async (user) => {
+              this.stopLeaderLoop();
+              this.detachTimerListener();
+              this.detachTasksListener();
+              this.user = user || null;
+              if (user) sessionStorage.removeItem(this.redirectLoginKey);
+              this.renderAuthState();
+              if (!user) return;
+              try {
+                await this.bootstrapUserData();
+                await this.restoreTimerFromCloud();
+              } catch (error) {
+                console.error("Post-login bootstrap failed:", error);
+                alert(
+                  "Login succeeded, but cloud data sync failed. Check Firestore rules and browser console.",
+                );
+              }
+            },
+          );
+        }
+
         ensureClientVersion() {
           const key = CONFIG.STORAGE_KEYS.CLIENT_VERSION;
           const current = localStorage.getItem(key);
@@ -2230,30 +2273,19 @@
         }
 
         async initialize() {
-          if (!window.FirebaseServices) {
-            await new Promise((resolve) => {
-              const timeoutId = setTimeout(resolve, 1200);
-              window.addEventListener(
-                "firebase-services-ready",
-                () => {
-                  clearTimeout(timeoutId);
-                  resolve();
-                },
-                { once: true },
-              );
-            });
-          }
-          if (!window.FirebaseServices) {
+          this.bindAuthButtons();
+          this.bindFirebaseReadyListener();
+
+          if (!this.attachFirebaseServicesIfAvailable()) {
             console.warn(
-              "Firebase services not configured. Running local-only mode.",
+              "Firebase services not configured yet. Waiting for module initialization.",
             );
             return;
           }
+
           this.installFirestoreInstrumentation();
           this.ensureClientVersion();
-          this.auth = window.FirebaseServices.auth;
-          this.db = window.FirebaseServices.db;
-          this.bindAuthButtons();
+
           try {
             const redirectResult =
               await window.FirebaseServices.getRedirectResult(this.auth);
@@ -2263,31 +2295,8 @@
           } catch (error) {
             this.handleAuthError(error);
           }
-          if (!this.authListenerAttached) {
-            this.authListenerAttached = true;
-            this.authStateUnsub = window.FirebaseServices.onAuthStateChanged(
-              this.auth,
-              async (user) => {
-                console.log("Auth state:", user?.uid || "logged out");
-                this.stopLeaderLoop();
-                this.detachTimerListener();
-                this.detachTasksListener();
-                this.user = user || null;
-                if (user) sessionStorage.removeItem(this.redirectLoginKey);
-                this.renderAuthState();
-                if (!user) return;
-                try {
-                  await this.bootstrapUserData();
-                  await this.restoreTimerFromCloud();
-                } catch (error) {
-                  console.error("Post-login bootstrap failed:", error);
-                  alert(
-                    "Login succeeded, but cloud data sync failed. Check Firestore rules and browser console.",
-                  );
-                }
-              },
-            );
-          }
+
+          this.initializeAuthObservers();
         }
 
         isAuthInitialized() {
@@ -2298,82 +2307,25 @@
           return location.protocol === "file:";
         }
 
-        isMobileClient() {
-          return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-            navigator.userAgent || "",
-          );
-        }
-
-        shouldFallbackToRedirect(errorCode) {
-          return [
-            "auth/popup-blocked",
-            "auth/popup-closed-by-user",
-            "auth/cancelled-popup-request",
-            "auth/operation-not-supported-in-this-environment",
-          ].includes(errorCode);
-        }
-
-        async startGoogleLoginFallback(loginBtn) {
-          if (!window.FirebaseServices?.auth || !this.auth) {
-            throw Object.assign(new Error("Firebase auth is not initialized"), {
-              code: "auth/dependencies-missing",
-            });
-          }
-
-          const provider = new window.FirebaseServices.GoogleAuthProvider();
-          provider.setCustomParameters({ prompt: "select_account" });
-
-          if (this.shouldBlockLoginOnFileProtocol()) {
-            throw Object.assign(
-              new Error("Google login is not supported on file:// origins"),
-              { code: "auth/operation-not-supported-in-this-environment" },
-            );
-          }
-
-          if (loginBtn) loginBtn.disabled = true;
-          try {
-            if (this.isMobileClient()) {
-              sessionStorage.setItem(this.redirectLoginKey, "1");
-              await window.FirebaseServices.signInWithRedirect(this.auth, provider);
-              return null;
-            }
-
-            const credential = await window.FirebaseServices.signInWithPopup(
-              this.auth,
-              provider,
-            );
-            return credential?.user || null;
-          } catch (error) {
-            if (!this.shouldFallbackToRedirect(error?.code)) throw error;
-            sessionStorage.setItem(this.redirectLoginKey, "1");
-            await window.FirebaseServices.signInWithRedirect(this.auth, provider);
-            return null;
-          } finally {
-            if (loginBtn) loginBtn.disabled = false;
-          }
-        }
-
         bindAuthButtons() {
-          if (this.authHandlersBound) return;
-          this.authHandlersBound = true;
-
+          if (this.authButtonsBound) return;
+          this.authButtonsBound = true;
           this.app.elements["google-login-btn"]?.addEventListener(
             "click",
             async () => {
               const loginBtn = this.app.elements["google-login-btn"];
-              if (!window.FirebaseServices?.auth || !this.auth) {
-                this.handleAuthError({
-                  code: "auth/dependencies-missing",
-                  message: "Firebase auth services are unavailable",
-                });
+              const isMobile = this.isMobileClient();
+
+              if (!this.auth || !window.FirebaseServices) {
+                alert("Login service is still initializing. Please try again in a moment.");
                 return;
               }
 
-              const moduleLogin = window.GoogleAuthModule?.startGoogleLogin;
+              const provider = this.buildGoogleProvider();
 
-              try {
-                if (typeof moduleLogin === "function") {
-                  await moduleLogin({
+              if (window.GoogleAuthModule?.startGoogleLogin) {
+                try {
+                  await window.GoogleAuthModule.startGoogleLogin({
                     auth: this.auth,
                     loginButton: loginBtn,
                     redirectLoginKey: this.redirectLoginKey,
@@ -2381,22 +2333,35 @@
                     signInWithPopup: window.FirebaseServices.signInWithPopup,
                     signInWithRedirect: window.FirebaseServices.signInWithRedirect,
                   });
+                } catch (moduleError) {
+                  this.handleAuthError(moduleError);
+                }
+                return;
+              }
+
+              try {
+                await window.GoogleAuthModule.startGoogleLogin({
+                  auth: this.auth,
+                  loginButton: loginBtn,
+                  redirectLoginKey: this.redirectLoginKey,
+                  googleAuthProvider: window.FirebaseServices.GoogleAuthProvider,
+                  signInWithPopup: window.FirebaseServices.signInWithPopup,
+                  signInWithRedirect: window.FirebaseServices.signInWithRedirect,
+                });
+              } catch (error) {
+                if (!this.shouldFallbackToRedirect(error)) {
+                  this.handleAuthError(error);
                   return;
                 }
 
-                await this.startGoogleLoginFallback(loginBtn);
-              } catch (error) {
-                if (
-                  error?.message?.includes("isMobileClient") ||
-                  error?.code === "auth/dependencies-missing"
-                ) {
-                  try {
-                    await this.startGoogleLoginFallback(loginBtn);
-                    return;
-                  } catch (fallbackError) {
-                    this.handleAuthError(fallbackError);
-                    return;
-                  }
+                // Local fallback if auth module is unavailable.
+                const provider = this.buildGoogleProvider();
+                if (loginBtn) loginBtn.disabled = true;
+                try {
+                  await this.startRedirectLogin(provider);
+                } catch (redirectError) {
+                  sessionStorage.removeItem(this.redirectLoginKey);
+                  this.handleAuthError(redirectError);
                 }
                 this.handleAuthError(error);
               }
@@ -5392,28 +5357,6 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           ].slice(0, 4);
         }
 
-        getMissionCheckId(item, idx) {
-          const topic = String(item?.topic || "")
-            .trim()
-            .toLowerCase();
-          return `${idx}:${topic}`;
-        }
-
-        getTodayManualMissionChecks() {
-          if (!this.state.manualMissionChecks || typeof this.state.manualMissionChecks !== "object") {
-            this.state.manualMissionChecks = {};
-          }
-          const today = this.app.getDateString(new Date());
-          if (!this.state.manualMissionChecks[today] || typeof this.state.manualMissionChecks[today] !== "object") {
-            this.state.manualMissionChecks[today] = {};
-          }
-          return this.state.manualMissionChecks[today];
-        }
-
-        saveTrainerState() {
-          this.app.saveToStorage(CONFIG.STORAGE_KEYS.TRAINER_STATE, this.state);
-        }
-
         syncMissionFromRoadmap() {
           const tasks = this.getDailyMissionTasks();
           const container = document.querySelector(".shadow-goal-list");
@@ -5425,14 +5368,12 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
             "mission-task-3",
             "mission-task-4",
           ];
-          const todayChecks = this.getTodayManualMissionChecks();
           container.innerHTML = tasks
             .map((item, idx) => {
+              const done = !!item.done;
               const labelId = idx < 4 ? ` id="${taskIds[idx]}"` : "";
-              const checkId = this.getMissionCheckId(item, idx);
-              const checked = !!todayChecks[checkId];
-              const doneCls = checked ? " shadow-goal-done" : "";
-              return `<div class="shadow-goal-item${doneCls}"><span${labelId}>${idx + 1}. ${this.escapeHtml(item.topic)}</span><input class="mission-check" type="checkbox" data-mission-check-id="${this.escapeHtml(checkId)}" ${checked ? "checked" : ""} /></div>`;
+              const doneCls = done ? " shadow-goal-done" : "";
+              return `<div class="shadow-goal-item${doneCls}"><span${labelId}>${idx + 1}. ${this.escapeHtml(item.topic)}</span><input class="mission-check" type="checkbox" ${done ? "checked" : ""} disabled /></div>`;
             })
             .join("");
 
@@ -6302,8 +6243,8 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
     </script>
 
     <script src="update-check.js"></script>
-    <script type="module" src="firebase-service.js?v=2026-03-13-authfix2"></script>
-    <script type="module" src="google-auth.js?v=2026-03-13-authfix2"></script>
-    <script type="module" src="app.js?v=2026-03-13-authfix2"></script>
+    <script type="module" src="firebase-service.js?v=2026-03-13-authfix1"></script>
+    <script type="module" src="google-auth.js?v=2026-03-13-authfix1"></script>
+    <script type="module" src="app.js?v=2026-03-13-authfix1"></script>
   </body>
 </html>
