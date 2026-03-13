@@ -2222,6 +2222,9 @@
           this.db = null;
           this.user = null;
           this.redirectLoginKey = "discipline_google_redirect_started";
+          this.authHandlersBound = false;
+          this.authListenerAttached = false;
+          this.authStateUnsub = null;
         }
 
         get isReady() {
@@ -2263,6 +2266,19 @@
 
         async initialize() {
           if (!window.FirebaseServices) {
+            await new Promise((resolve) => {
+              const timeoutId = setTimeout(resolve, 1200);
+              window.addEventListener(
+                "firebase-services-ready",
+                () => {
+                  clearTimeout(timeoutId);
+                  resolve();
+                },
+                { once: true },
+              );
+            });
+          }
+          if (!window.FirebaseServices) {
             console.warn(
               "Firebase services not configured. Running local-only mode.",
             );
@@ -2282,27 +2298,31 @@
           } catch (error) {
             this.handleAuthError(error);
           }
-          window.FirebaseServices.onAuthStateChanged(
-            this.auth,
-            async (user) => {
-              this.stopLeaderLoop();
-              this.detachTimerListener();
-              this.detachTasksListener();
-              this.user = user || null;
-              if (user) sessionStorage.removeItem(this.redirectLoginKey);
-              this.renderAuthState();
-              if (!user) return;
-              try {
-                await this.bootstrapUserData();
-                await this.restoreTimerFromCloud();
-              } catch (error) {
-                console.error("Post-login bootstrap failed:", error);
-                alert(
-                  "Login succeeded, but cloud data sync failed. Check Firestore rules and browser console.",
-                );
-              }
-            },
-          );
+          if (!this.authListenerAttached) {
+            this.authListenerAttached = true;
+            this.authStateUnsub = window.FirebaseServices.onAuthStateChanged(
+              this.auth,
+              async (user) => {
+                console.log("Auth state:", user?.uid || "logged out");
+                this.stopLeaderLoop();
+                this.detachTimerListener();
+                this.detachTasksListener();
+                this.user = user || null;
+                if (user) sessionStorage.removeItem(this.redirectLoginKey);
+                this.renderAuthState();
+                if (!user) return;
+                try {
+                  await this.bootstrapUserData();
+                  await this.restoreTimerFromCloud();
+                } catch (error) {
+                  console.error("Post-login bootstrap failed:", error);
+                  alert(
+                    "Login succeeded, but cloud data sync failed. Check Firestore rules and browser console.",
+                  );
+                }
+              },
+            );
+          }
         }
 
         isAuthInitialized() {
@@ -2313,86 +2333,33 @@
           return location.protocol === "file:";
         }
 
-        isMobileClient() {
-          return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
-        }
-
-        buildGoogleProvider() {
-          const provider = new window.FirebaseServices.GoogleAuthProvider();
-          provider.setCustomParameters({ prompt: "select_account" });
-          return provider;
-        }
-
-        shouldFallbackToRedirect(error) {
-          const code = error?.code || "";
-          const nonRecoverableCodes = new Set([
-            "auth/unauthorized-domain",
-            "auth/operation-not-allowed",
-            "auth/invalid-api-key",
-            "auth/app-not-authorized",
-          ]);
-          return !nonRecoverableCodes.has(code);
-        }
-
-        async startRedirectLogin(provider) {
-          sessionStorage.setItem(this.redirectLoginKey, "1");
-          await window.FirebaseServices.signInWithRedirect(this.auth, provider);
-        }
-
         bindAuthButtons() {
+          if (this.authHandlersBound) return;
+          this.authHandlersBound = true;
+
           this.app.elements["google-login-btn"]?.addEventListener(
             "click",
             async () => {
-              if (!this.auth || !window.FirebaseServices) {
-                alert("Login service is still initializing. Please try again in a moment.");
+              const loginBtn = this.app.elements["google-login-btn"];
+              if (!window.FirebaseServices?.auth || !this.auth || !window.GoogleAuthModule?.startGoogleLogin) {
+                this.handleAuthError({
+                  code: "auth/dependencies-missing",
+                  message: "Google auth module is unavailable",
+                });
                 return;
               }
-              const provider =
-                new window.FirebaseServices.GoogleAuthProvider();
-              provider.setCustomParameters({ prompt: "select_account" });
-              const shouldFallbackToRedirect = (error) => {
-                const code = error?.code || "";
-                const nonRecoverableCodes = new Set([
-                  "auth/unauthorized-domain",
-                  "auth/operation-not-allowed",
-                  "auth/invalid-api-key",
-                  "auth/app-not-authorized",
-                ]);
-                return !nonRecoverableCodes.has(code);
-              };
 
               try {
-                if (isMobile) {
-                  sessionStorage.setItem(this.redirectLoginKey, "1");
-                  await window.FirebaseServices.signInWithRedirect(
-                    this.auth,
-                    provider,
-                  );
-                  return;
-                }
-
-                // Prefer popup first on desktop for faster auth completion.
-                await window.FirebaseServices.signInWithPopup(
-                  this.auth,
-                  provider,
-                );
+                await window.GoogleAuthModule.startGoogleLogin({
+                  auth: this.auth,
+                  loginButton: loginBtn,
+                  redirectLoginKey: this.redirectLoginKey,
+                  googleAuthProvider: window.FirebaseServices.GoogleAuthProvider,
+                  signInWithPopup: window.FirebaseServices.signInWithPopup,
+                  signInWithRedirect: window.FirebaseServices.signInWithRedirect,
+                });
               } catch (error) {
-                if (!shouldFallbackToRedirect(error)) {
-                  this.handleAuthError(error);
-                  return;
-                }
-
-                // Local fallback if auth module is unavailable.
-                const provider = this.buildGoogleProvider();
-                if (loginBtn) loginBtn.disabled = true;
-                try {
-                  await this.startRedirectLogin(provider);
-                } catch (redirectError) {
-                  sessionStorage.removeItem(this.redirectLoginKey);
-                  this.handleAuthError(redirectError);
-                }
-              } finally {
-                if (loginBtn) loginBtn.disabled = false;
+                this.handleAuthError(error);
               }
             },
           );
@@ -2484,6 +2451,7 @@
             "auth/unauthorized-domain": "This domain is not authorized in Firebase Authentication settings.",
             "auth/operation-not-allowed": "Google sign-in is not enabled for this Firebase project.",
             "auth/operation-not-supported-in-this-environment": "Your browser environment blocked popup login. Redirect login will be used instead.",
+            "auth/dependencies-missing": "Login services are not fully initialized. Refresh the page and try again.",
           };
           const message =
             messageByCode[code] ||
@@ -2663,6 +2631,12 @@
           if (!this.timerUnsub) return;
           this.timerUnsub();
           this.timerUnsub = null;
+        }
+
+        detachTasksListener() {
+          if (!this.tasksUnsub) return;
+          this.tasksUnsub();
+          this.tasksUnsub = null;
         }
 
         async syncTaskUpsert(task) {
