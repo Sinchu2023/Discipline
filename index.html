@@ -5924,7 +5924,7 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
                   intersect: false,
                   callbacks: {
                     label: (ctx) =>
-                      `Productivity: ${Number(ctx.parsed.y || 0).toFixed(2)}h`,
+                      `${ctx.dataset.label}: ${Number(ctx.parsed.y || 0).toFixed(2)}h`,
                   },
                 },
               },
@@ -6007,6 +6007,14 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           }
 
           const colors = this.getColorScheme();
+          const shadowMinutes = Math.max(
+            0,
+            Number(this.app.shadowEngine?.shadowSevenDayAverage || 0),
+          );
+          const shadowHours = parseFloat((shadowMinutes / 60).toFixed(2));
+          const shadowData = Array.from({ length: labels.length }, () =>
+            shadowHours,
+          );
           return {
             labels,
             datasets: [
@@ -6022,6 +6030,20 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
                 borderWidth: 2.5,
                 tension: 0.34,
                 fill: true,
+              },
+              {
+                label: "Shadow",
+                data: shadowData,
+                borderColor: "rgb(0, 140, 255)",
+                backgroundColor: "rgba(0, 140, 255, 0.14)",
+                pointBackgroundColor: "rgb(0, 140, 255)",
+                pointRadius: 0,
+                pointHoverRadius: 0,
+                pointBorderColor: "rgb(0, 140, 255)",
+                borderWidth: 2,
+                tension: 0.2,
+                fill: false,
+                borderDash: [7, 5],
               },
             ],
           };
