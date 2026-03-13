@@ -2309,11 +2309,24 @@
           this.app.elements["google-login-btn"]?.addEventListener(
             "click",
             async () => {
+              if (!this.auth || !window.FirebaseServices) {
+                alert("Login service is still initializing. Please try again in a moment.");
+                return;
+              }
               const provider =
                 new window.FirebaseServices.GoogleAuthProvider();
               provider.setCustomParameters({ prompt: "select_account" });
-              // Redirect is more reliable in browsers with strict popup/COOP policies.
-              const useRedirectPreferred = true;
+              const shouldFallbackToRedirect = (error) => {
+                const code = error?.code || "";
+                const nonRecoverableCodes = new Set([
+                  "auth/unauthorized-domain",
+                  "auth/operation-not-allowed",
+                  "auth/invalid-api-key",
+                  "auth/app-not-authorized",
+                ]);
+                return !nonRecoverableCodes.has(code);
+              };
+
               try {
                 // Prefer popup first for faster auth completion and fewer redirect edge cases.
                 await window.FirebaseServices.signInWithPopup(
@@ -2321,13 +2334,7 @@
                   provider,
                 );
               } catch (error) {
-                const popupFallbackCodes = new Set([
-                  "auth/popup-blocked",
-                  "auth/popup-closed-by-user",
-                  "auth/cancelled-popup-request",
-                  "auth/operation-not-supported-in-this-environment",
-                ]);
-                if (!popupFallbackCodes.has(error?.code)) {
+                if (!shouldFallbackToRedirect(error)) {
                   this.handleAuthError(error);
                   return;
                 }
@@ -2431,6 +2438,7 @@
             "auth/network-request-failed": "Network error during login. Check your internet connection and retry.",
             "auth/unauthorized-domain": "This domain is not authorized in Firebase Authentication settings.",
             "auth/operation-not-allowed": "Google sign-in is not enabled for this Firebase project.",
+            "auth/operation-not-supported-in-this-environment": "Your browser environment blocked popup login. Redirect login will be used instead.",
           };
           const message =
             messageByCode[code] ||
