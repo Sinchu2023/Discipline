@@ -1755,7 +1755,7 @@
       // ==============================================
       const CONFIG = {
         DB_SCHEMA_VERSION: 2,
-        CLIENT_VERSION: "2026.03.12.2",
+        CLIENT_VERSION: "2026.03.12.3",
         DAILY_PRODUCTIVITY_THRESHOLD_MINUTES: 240,
         DISTRACTION_BUDGET_MINUTES: 90,
         STORAGE_KEYS: {
@@ -2328,7 +2328,16 @@
               };
 
               try {
-                // Prefer popup first for faster auth completion and fewer redirect edge cases.
+                if (isMobile) {
+                  sessionStorage.setItem(this.redirectLoginKey, "1");
+                  await window.FirebaseServices.signInWithRedirect(
+                    this.auth,
+                    provider,
+                  );
+                  return;
+                }
+
+                // Prefer popup first on desktop for faster auth completion.
                 await window.FirebaseServices.signInWithPopup(
                   this.auth,
                   provider,
@@ -2348,6 +2357,8 @@
                   sessionStorage.removeItem(this.redirectLoginKey);
                   this.handleAuthError(redirectError);
                 }
+              } finally {
+                if (loginBtn) loginBtn.disabled = false;
               }
             },
           );
