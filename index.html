@@ -1371,19 +1371,19 @@
               <div class="shadow-goal-list">
                 <div class="shadow-goal-item">
                   <span id="mission-task-1">1. Basic Semiconductor Physics</span
-                  ><input class="mission-check" type="checkbox" disabled />
+                  ><input class="mission-check" type="checkbox" />
                 </div>
                 <div class="shadow-goal-item">
                   <span id="mission-task-2">2. Different Models of Diodes</span
-                  ><input class="mission-check" type="checkbox" disabled />
+                  ><input class="mission-check" type="checkbox" />
                 </div>
                 <div class="shadow-goal-item">
                   <span id="mission-task-3">3. Project Work</span
-                  ><input class="mission-check" type="checkbox" disabled />
+                  ><input class="mission-check" type="checkbox" />
                 </div>
                 <div class="shadow-goal-item">
                   <span id="mission-task-4">4. Revision</span
-                  ><input class="mission-check" type="checkbox" disabled />
+                  ><input class="mission-check" type="checkbox" />
                 </div>
               </div>
               <div class="shadow-line">
@@ -5243,6 +5243,22 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
             .trim();
         }
 
+        saveTrainerState() {
+          this.app.saveToStorage(CONFIG.STORAGE_KEYS.TRAINER_STATE, this.state);
+        }
+
+        getTodayManualMissionChecks() {
+          const today = this.app.getDateString(new Date());
+          if (!this.state.manualMissionChecks[today]) {
+            this.state.manualMissionChecks[today] = {};
+          }
+          return this.state.manualMissionChecks[today];
+        }
+
+        getMissionCheckId(topic = "") {
+          return this.normalizeTopic(topic).replace(/\s+/g, "-") || "mission";
+        }
+
         getThresholdForTopic(topic = "") {
           const key = this.normalizeTopic(topic);
           return MISSION_THRESHOLDS[key] || MISSION_THRESHOLDS.default;
@@ -5369,12 +5385,16 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
             "mission-task-3",
             "mission-task-4",
           ];
+          const checks = this.getTodayManualMissionChecks();
           container.innerHTML = tasks
             .map((item, idx) => {
-              const done = !!item.done;
+              const autoDone = !!item.done;
+              const checkId = this.getMissionCheckId(item.topic);
+              const manualDone = !!checks[checkId];
+              const done = autoDone || manualDone;
               const labelId = idx < 4 ? ` id="${taskIds[idx]}"` : "";
               const doneCls = done ? " shadow-goal-done" : "";
-              return `<div class="shadow-goal-item${doneCls}"><span${labelId}>${idx + 1}. ${this.escapeHtml(item.topic)}</span><input class="mission-check" type="checkbox" ${done ? "checked" : ""} disabled /></div>`;
+              return `<div class="shadow-goal-item${doneCls}"><span${labelId}>${idx + 1}. ${this.escapeHtml(item.topic)}</span><input class="mission-check" type="checkbox" data-mission-check-id="${this.escapeHtml(checkId)}" ${done ? "checked" : ""} /></div>`;
             })
             .join("");
 
@@ -5382,7 +5402,6 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
             checkbox.addEventListener("change", (e) => {
               const checkId = e.target.getAttribute("data-mission-check-id");
               if (!checkId) return;
-              const checks = this.getTodayManualMissionChecks();
               checks[checkId] = !!e.target.checked;
               e.target.closest(".shadow-goal-item")?.classList.toggle("shadow-goal-done", !!e.target.checked);
               this.saveTrainerState();
