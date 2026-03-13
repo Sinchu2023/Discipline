@@ -2368,63 +2368,37 @@
           await window.FirebaseServices.signInWithRedirect(this.auth, provider);
         }
 
-        isAuthInitialized() {
-          return !!(this.auth && window.FirebaseServices);
-        }
-
-        shouldBlockLoginOnFileProtocol() {
-          return location.protocol === "file:";
-        }
-
-        isMobileClient() {
-          return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
-        }
-
-        buildGoogleProvider() {
-          const provider = new window.FirebaseServices.GoogleAuthProvider();
-          provider.setCustomParameters({ prompt: "select_account" });
-          return provider;
-        }
-
-        shouldFallbackToRedirect(error) {
-          const code = error?.code || "";
-          const nonRecoverableCodes = new Set([
-            "auth/unauthorized-domain",
-            "auth/operation-not-allowed",
-            "auth/invalid-api-key",
-            "auth/app-not-authorized",
-          ]);
-          return !nonRecoverableCodes.has(code);
-        }
-
-        async startRedirectLogin(provider) {
-          sessionStorage.setItem(this.redirectLoginKey, "1");
-          await window.FirebaseServices.signInWithRedirect(this.auth, provider);
-        }
-
         bindAuthButtons() {
           if (this.authButtonsBound) return;
           this.authButtonsBound = true;
           this.app.elements["google-login-btn"]?.addEventListener(
             "click",
             async () => {
+              const loginBtn = this.app.elements["google-login-btn"];
+              const isMobile = this.isMobileClient();
+
               if (!this.auth || !window.FirebaseServices) {
                 alert("Login service is still initializing. Please try again in a moment.");
                 return;
               }
-              const provider =
-                new window.FirebaseServices.GoogleAuthProvider();
-              provider.setCustomParameters({ prompt: "select_account" });
-              const shouldFallbackToRedirect = (error) => {
-                const code = error?.code || "";
-                const nonRecoverableCodes = new Set([
-                  "auth/unauthorized-domain",
-                  "auth/operation-not-allowed",
-                  "auth/invalid-api-key",
-                  "auth/app-not-authorized",
-                ]);
-                return !nonRecoverableCodes.has(code);
-              };
+
+              const provider = this.buildGoogleProvider();
+
+              if (window.GoogleAuthModule?.startGoogleLogin) {
+                try {
+                  await window.GoogleAuthModule.startGoogleLogin({
+                    auth: this.auth,
+                    loginButton: loginBtn,
+                    redirectLoginKey: this.redirectLoginKey,
+                    googleAuthProvider: window.FirebaseServices.GoogleAuthProvider,
+                    signInWithPopup: window.FirebaseServices.signInWithPopup,
+                    signInWithRedirect: window.FirebaseServices.signInWithRedirect,
+                  });
+                } catch (moduleError) {
+                  this.handleAuthError(moduleError);
+                }
+                return;
+              }
 
               try {
                 if (isMobile) {
@@ -2442,7 +2416,7 @@
                   provider,
                 );
               } catch (error) {
-                if (!shouldFallbackToRedirect(error)) {
+                if (!this.shouldFallbackToRedirect(error)) {
                   this.handleAuthError(error);
                   return;
                 }
