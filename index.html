@@ -5923,10 +5923,8 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
                   mode: "nearest",
                   intersect: false,
                   callbacks: {
-                    label: (ctx) => {
-                      const value = Number(ctx.parsed.y || 0);
-                      return `${ctx.dataset.label}: ${this.formatHoursForTooltip(value)}`;
-                    },
+                    label: (ctx) =>
+                      `${ctx.dataset.label}: ${Number(ctx.parsed.y || 0).toFixed(2)}h`,
                   },
                 },
               },
@@ -6009,8 +6007,14 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           }
 
           const colors = this.getColorScheme();
-          const rangeDates = this.getRangeDates(range);
-          const shadowData = this.buildShadowSeries(labels, rangeDates);
+          const shadowMinutes = Math.max(
+            0,
+            Number(this.app.shadowEngine?.shadowSevenDayAverage || 0),
+          );
+          const shadowHours = parseFloat((shadowMinutes / 60).toFixed(2));
+          const shadowData = Array.from({ length: labels.length }, () =>
+            shadowHours,
+          );
           return {
             labels,
             datasets: [
