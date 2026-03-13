@@ -2381,6 +2381,10 @@
                   this.handleAuthError(error);
                   return;
                 }
+
+                // Local fallback if auth module is unavailable.
+                const provider = this.buildGoogleProvider();
+                if (loginBtn) loginBtn.disabled = true;
                 try {
                   await this.startRedirectLogin(provider);
                 } catch (redirectError) {
@@ -6348,67 +6352,9 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
       });
     </script>
 
-    <script type="module">
-      import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
-      import {
-        getAuth,
-        GoogleAuthProvider,
-        signInWithPopup,
-        signInWithRedirect,
-        getRedirectResult,
-        signOut,
-        onAuthStateChanged,
-      } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
-      import {
-        getFirestore,
-        doc,
-        getDoc,
-        getDocs,
-        setDoc,
-        collection,
-        deleteDoc,
-      } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
-
-      const firebaseConfig = {
-        apiKey: "AIzaSyBIdVzFFqSlaHKfaob9_kcB_OgLJTCw9-M",
-        authDomain: "discipline-tracker-e8e8a.firebaseapp.com",
-        projectId: "discipline-tracker-e8e8a",
-        storageBucket: "discipline-tracker-e8e8a.firebasestorage.app",
-        messagingSenderId: "382793676796",
-        appId: "1:382793676796:web:1a2f749697bf6cb68fe479",
-      };
-
-      const hasConfig = !Object.values(firebaseConfig).some((v) =>
-        String(v).startsWith("REPLACE_WITH_"),
-      );
-      if (!hasConfig) {
-        console.warn(
-          "Firebase config placeholders detected. Cloud sync disabled until configured.",
-        );
-        window.FirebaseServices = null;
-      } else {
-        const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        window.FirebaseServices = {
-          app,
-          auth,
-          db,
-          GoogleAuthProvider,
-          signInWithPopup,
-          signInWithRedirect,
-          getRedirectResult,
-          signOut,
-          onAuthStateChanged,
-          doc,
-          getDoc,
-          getDocs,
-          setDoc,
-          collection,
-          deleteDoc,
-        };
-      }
-    </script>
+    <script src="update-check.js"></script>
+    <script type="module" src="firebase-service.js"></script>
+    <script type="module" src="google-auth.js"></script>
+    <script type="module" src="app.js"></script>
   </body>
 </html>
