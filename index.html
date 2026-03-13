@@ -1755,7 +1755,7 @@
       // ==============================================
       const CONFIG = {
         DB_SCHEMA_VERSION: 2,
-        CLIENT_VERSION: "2026.03.12.5",
+        CLIENT_VERSION: "2026.03.12.3",
         DAILY_PRODUCTIVITY_THRESHOLD_MINUTES: 240,
         DISTRACTION_BUDGET_MINUTES: 90,
         STORAGE_KEYS: {
@@ -2343,25 +2343,31 @@
           this.app.elements["google-login-btn"]?.addEventListener(
             "click",
             async () => {
-              if (!this.isAuthInitialized()) {
+              if (!this.auth || !window.FirebaseServices) {
                 alert("Login service is still initializing. Please try again in a moment.");
                 return;
               }
-
-              if (this.shouldBlockLoginOnFileProtocol()) {
-                alert(
-                  "Google Login cannot run from file://. Please open this app via http://localhost (for example: python3 -m http.server 5500, then open http://localhost:5500).",
-                );
-                return;
-              }
-
-              const provider = this.buildGoogleProvider();
-              const loginBtn = this.app.elements["google-login-btn"];
-              if (loginBtn) loginBtn.disabled = true;
+              const provider =
+                new window.FirebaseServices.GoogleAuthProvider();
+              provider.setCustomParameters({ prompt: "select_account" });
+              const shouldFallbackToRedirect = (error) => {
+                const code = error?.code || "";
+                const nonRecoverableCodes = new Set([
+                  "auth/unauthorized-domain",
+                  "auth/operation-not-allowed",
+                  "auth/invalid-api-key",
+                  "auth/app-not-authorized",
+                ]);
+                return !nonRecoverableCodes.has(code);
+              };
 
               try {
-                if (this.isMobileClient()) {
-                  await this.startRedirectLogin(provider);
+                if (isMobile) {
+                  sessionStorage.setItem(this.redirectLoginKey, "1");
+                  await window.FirebaseServices.signInWithRedirect(
+                    this.auth,
+                    provider,
+                  );
                   return;
                 }
 
@@ -2371,7 +2377,7 @@
                   provider,
                 );
               } catch (error) {
-                if (!this.shouldFallbackToRedirect(error)) {
+                if (!shouldFallbackToRedirect(error)) {
                   this.handleAuthError(error);
                   return;
                 }
@@ -2473,7 +2479,7 @@
             "auth/network-request-failed": "Network error during login. Check your internet connection and retry.",
             "auth/unauthorized-domain": "This domain is not authorized in Firebase Authentication settings.",
             "auth/operation-not-allowed": "Google sign-in is not enabled for this Firebase project.",
-            "auth/operation-not-supported-in-this-environment": "This browser environment does not support Firebase Google login here. If you opened the app from file://, run it on http://localhost first.",
+            "auth/operation-not-supported-in-this-environment": "Your browser environment blocked popup login. Redirect login will be used instead.",
           };
           const message =
             messageByCode[code] ||
