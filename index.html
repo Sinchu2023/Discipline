@@ -1371,19 +1371,19 @@
               <div class="shadow-goal-list">
                 <div class="shadow-goal-item">
                   <span id="mission-task-1">1. Basic Semiconductor Physics</span
-                  ><input class="mission-check" type="checkbox" disabled />
+                  ><input class="mission-check" type="checkbox" />
                 </div>
                 <div class="shadow-goal-item">
                   <span id="mission-task-2">2. Different Models of Diodes</span
-                  ><input class="mission-check" type="checkbox" disabled />
+                  ><input class="mission-check" type="checkbox" />
                 </div>
                 <div class="shadow-goal-item">
                   <span id="mission-task-3">3. Project Work</span
-                  ><input class="mission-check" type="checkbox" disabled />
+                  ><input class="mission-check" type="checkbox" />
                 </div>
                 <div class="shadow-goal-item">
                   <span id="mission-task-4">4. Revision</span
-                  ><input class="mission-check" type="checkbox" disabled />
+                  ><input class="mission-check" type="checkbox" />
                 </div>
               </div>
               <div class="shadow-line">
@@ -5243,6 +5243,22 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
             .trim();
         }
 
+        saveTrainerState() {
+          this.app.saveToStorage(CONFIG.STORAGE_KEYS.TRAINER_STATE, this.state);
+        }
+
+        getTodayManualMissionChecks() {
+          const today = this.app.getDateString(new Date());
+          if (!this.state.manualMissionChecks[today]) {
+            this.state.manualMissionChecks[today] = {};
+          }
+          return this.state.manualMissionChecks[today];
+        }
+
+        getMissionCheckId(topic = "") {
+          return this.normalizeTopic(topic).replace(/\s+/g, "-") || "mission";
+        }
+
         getThresholdForTopic(topic = "") {
           const key = this.normalizeTopic(topic);
           return MISSION_THRESHOLDS[key] || MISSION_THRESHOLDS.default;
@@ -5369,12 +5385,16 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
             "mission-task-3",
             "mission-task-4",
           ];
+          const checks = this.getTodayManualMissionChecks();
           container.innerHTML = tasks
             .map((item, idx) => {
-              const done = !!item.done;
+              const autoDone = !!item.done;
+              const checkId = this.getMissionCheckId(item.topic);
+              const manualDone = !!checks[checkId];
+              const done = autoDone || manualDone;
               const labelId = idx < 4 ? ` id="${taskIds[idx]}"` : "";
               const doneCls = done ? " shadow-goal-done" : "";
-              return `<div class="shadow-goal-item${doneCls}"><span${labelId}>${idx + 1}. ${this.escapeHtml(item.topic)}</span><input class="mission-check" type="checkbox" ${done ? "checked" : ""} disabled /></div>`;
+              return `<div class="shadow-goal-item${doneCls}"><span${labelId}>${idx + 1}. ${this.escapeHtml(item.topic)}</span><input class="mission-check" type="checkbox" data-mission-check-id="${this.escapeHtml(checkId)}" ${done ? "checked" : ""} /></div>`;
             })
             .join("");
 
@@ -5382,7 +5402,6 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
             checkbox.addEventListener("change", (e) => {
               const checkId = e.target.getAttribute("data-mission-check-id");
               if (!checkId) return;
-              const checks = this.getTodayManualMissionChecks();
               checks[checkId] = !!e.target.checked;
               e.target.closest(".shadow-goal-item")?.classList.toggle("shadow-goal-done", !!e.target.checked);
               this.saveTrainerState();
@@ -5904,8 +5923,10 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
                   mode: "nearest",
                   intersect: false,
                   callbacks: {
-                    label: (ctx) =>
-                      `Productivity: ${Number(ctx.parsed.y || 0).toFixed(2)}h`,
+                    label: (ctx) => {
+                      const value = Number(ctx.parsed.y || 0);
+                      return `${ctx.dataset.label}: ${this.formatHoursForTooltip(value)}`;
+                    },
                   },
                 },
               },
@@ -5988,6 +6009,8 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
           }
 
           const colors = this.getColorScheme();
+          const rangeDates = this.getRangeDates(range);
+          const shadowData = this.buildShadowSeries(labels, rangeDates);
           return {
             labels,
             datasets: [
@@ -6003,6 +6026,20 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
                 borderWidth: 2.5,
                 tension: 0.34,
                 fill: true,
+              },
+              {
+                label: "Shadow",
+                data: shadowData,
+                borderColor: "rgb(0, 140, 255)",
+                backgroundColor: "rgba(0, 140, 255, 0.14)",
+                pointBackgroundColor: "rgb(0, 140, 255)",
+                pointRadius: 0,
+                pointHoverRadius: 0,
+                pointBorderColor: "rgb(0, 140, 255)",
+                borderWidth: 2,
+                tension: 0.2,
+                fill: false,
+                borderDash: [7, 5],
               },
             ],
           };
@@ -6038,6 +6075,53 @@ Execute Phase 1 now and close only after logging the full ${this.app.formatDurat
               },
             ],
           };
+        }
+
+        formatHoursForTooltip(hours = 0) {
+          const safe = Math.max(0, Number(hours) || 0);
+          const minutes = Math.round(safe * 60);
+          const h = Math.floor(minutes / 60);
+          const m = minutes % 60;
+          return `${h}h ${String(m).padStart(2, "0")}m (${safe.toFixed(2)}h)`;
+        }
+
+        buildShadowSeries(labels, rangeDates) {
+          const minuteByDate = new Map();
+          this.app.state.tasks.forEach((task) => {
+            if (
+              !task ||
+              !task.date ||
+              !this.passesProductivityFilter(task, "productivity")
+            )
+              return;
+            minuteByDate.set(
+              task.date,
+              (minuteByDate.get(task.date) || 0) + Number(task.duration || 0),
+            );
+          });
+
+          const shadowHours = rangeDates.map((dateStr) => {
+            const date = new Date(dateStr);
+            let total = 0;
+            for (let i = 0; i < 7; i++) {
+              const d = new Date(date);
+              d.setDate(date.getDate() - i);
+              const key = this.app.getDateString(d);
+              total += minuteByDate.get(key) || 0;
+            }
+            return parseFloat((total / 7 / 60).toFixed(2));
+          });
+
+          if (!shadowHours.some((v) => v > 0)) {
+            const fallback = parseFloat(
+              (
+                Math.max(0, Number(this.app.shadowEngine?.shadowSevenDayAverage || 0)) /
+                60
+              ).toFixed(2),
+            );
+            return Array.from({ length: labels.length }, () => fallback);
+          }
+          return shadowHours;
         }
 
         getCurrentFilteredTotalMinutes() {
