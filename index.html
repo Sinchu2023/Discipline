@@ -2222,6 +2222,8 @@
           this.db = null;
           this.user = null;
           this.redirectLoginKey = "discipline_google_redirect_started";
+          this.authButtonsBound = false;
+          this.firebaseReadyListenerBound = false;
         }
 
         get isReady() {
@@ -2248,40 +2250,27 @@
           window.FirebaseServices.__instrumented = true;
         }
 
-        ensureClientVersion() {
-          const key = CONFIG.STORAGE_KEYS.CLIENT_VERSION;
-          const current = localStorage.getItem(key);
-          if (current === CONFIG.CLIENT_VERSION) return;
-          localStorage.setItem(key, CONFIG.CLIENT_VERSION);
-          // Avoid interrupting Firebase redirect sign-in processing.
-          if (sessionStorage.getItem(this.redirectLoginKey)) return;
-          const reloadFlag = `${key}_reloaded`;
-          if (sessionStorage.getItem(reloadFlag)) return;
-          sessionStorage.setItem(reloadFlag, "1");
-          location.reload();
-        }
-
-        async initialize() {
-          if (!window.FirebaseServices) {
-            console.warn(
-              "Firebase services not configured. Running local-only mode.",
-            );
-            return;
-          }
-          this.installFirestoreInstrumentation();
-          this.ensureClientVersion();
+        attachFirebaseServicesIfAvailable() {
+          if (!window.FirebaseServices) return false;
           this.auth = window.FirebaseServices.auth;
           this.db = window.FirebaseServices.db;
-          this.bindAuthButtons();
-          try {
-            const redirectResult =
-              await window.FirebaseServices.getRedirectResult(this.auth);
-            if (redirectResult?.user) {
-              sessionStorage.removeItem(this.redirectLoginKey);
-            }
-          } catch (error) {
-            this.handleAuthError(error);
-          }
+          return !!(this.auth && this.db);
+        }
+
+        bindFirebaseReadyListener() {
+          if (this.firebaseReadyListenerBound) return;
+          this.firebaseReadyListenerBound = true;
+          window.addEventListener("firebase-services-ready", () => {
+            if (this.auth) return;
+            if (!this.attachFirebaseServicesIfAvailable()) return;
+            this.initializeAuthObservers();
+          });
+        }
+
+        initializeAuthObservers() {
+          if (!this.auth || !window.FirebaseServices) return;
+          if (this.authObserverInitialized) return;
+          this.authObserverInitialized = true;
           window.FirebaseServices.onAuthStateChanged(
             this.auth,
             async (user) => {
@@ -2303,6 +2292,80 @@
               }
             },
           );
+        }
+
+        ensureClientVersion() {
+          const key = CONFIG.STORAGE_KEYS.CLIENT_VERSION;
+          const current = localStorage.getItem(key);
+          if (current === CONFIG.CLIENT_VERSION) return;
+          localStorage.setItem(key, CONFIG.CLIENT_VERSION);
+          // Avoid interrupting Firebase redirect sign-in processing.
+          if (sessionStorage.getItem(this.redirectLoginKey)) return;
+          const reloadFlag = `${key}_reloaded`;
+          if (sessionStorage.getItem(reloadFlag)) return;
+          sessionStorage.setItem(reloadFlag, "1");
+          location.reload();
+        }
+
+        async initialize() {
+          this.bindAuthButtons();
+          this.bindFirebaseReadyListener();
+
+          if (!this.attachFirebaseServicesIfAvailable()) {
+            console.warn(
+              "Firebase services not configured yet. Waiting for module initialization.",
+            );
+            return;
+          }
+
+          this.installFirestoreInstrumentation();
+          this.ensureClientVersion();
+
+          try {
+            const redirectResult =
+              await window.FirebaseServices.getRedirectResult(this.auth);
+            if (redirectResult?.user) {
+              sessionStorage.removeItem(this.redirectLoginKey);
+            }
+          } catch (error) {
+            this.handleAuthError(error);
+          }
+
+          this.initializeAuthObservers();
+        }
+
+        isAuthInitialized() {
+          return !!(this.auth && window.FirebaseServices);
+        }
+
+        shouldBlockLoginOnFileProtocol() {
+          return location.protocol === "file:";
+        }
+
+        isMobileClient() {
+          return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+        }
+
+        buildGoogleProvider() {
+          const provider = new window.FirebaseServices.GoogleAuthProvider();
+          provider.setCustomParameters({ prompt: "select_account" });
+          return provider;
+        }
+
+        shouldFallbackToRedirect(error) {
+          const code = error?.code || "";
+          const nonRecoverableCodes = new Set([
+            "auth/unauthorized-domain",
+            "auth/operation-not-allowed",
+            "auth/invalid-api-key",
+            "auth/app-not-authorized",
+          ]);
+          return !nonRecoverableCodes.has(code);
+        }
+
+        async startRedirectLogin(provider) {
+          sessionStorage.setItem(this.redirectLoginKey, "1");
+          await window.FirebaseServices.signInWithRedirect(this.auth, provider);
         }
 
         isAuthInitialized() {
@@ -2340,6 +2403,8 @@
         }
 
         bindAuthButtons() {
+          if (this.authButtonsBound) return;
+          this.authButtonsBound = true;
           this.app.elements["google-login-btn"]?.addEventListener(
             "click",
             async () => {
