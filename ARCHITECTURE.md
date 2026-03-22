@@ -1,33 +1,74 @@
-# Shadow System Architecture Refactor Plan
+# Architecture Overview and Refactor Direction
 
-## 1) Current Architectural Problems
-- HTML previously mixed structure, CSS, and JS in one file.
-- Large script contained UI, business logic, storage, analytics, and orchestration in one place.
-- Module boundaries existed by class naming, but not by file boundaries.
-- Tight coupling to DOM ids made testing and debugging difficult.
+This document describes the current architecture, the rationale behind recent structure changes, and the recommended next migration steps.
 
-## 2) Improved Architecture
-- `Discipline.html`: primary app shell and mounting points.
-- `assets/css/app.css`: all styles.
-- `assets/js/app.js`: all runtime logic (behavior preserved).
-- Future phased migration:
-  - Move bootstrap/state/event bus to `modules/core/`.
-  - Move render managers to `modules/ui/`.
-  - Move engines/rules to `modules/logic/`.
-  - Move storage/sync/import-export to `modules/services/`.
+## 1) Problem Statement (Before Refactor)
 
-## 3) Integration Strategy
-- Single app controller remains the integration point.
-- All feature modules communicate through app state and explicit manager methods.
-- Keep storage keys and existing feature contracts unchanged during migration.
+Previously, the application logic and presentation concerns were highly concentrated:
 
-## 4) Performance/Maintainability Improvements
-- Reduced HTML parse/maintenance complexity by externalizing style/script.
-- Enables browser caching for CSS/JS assets.
-- Prepares codebase for incremental modular extraction without feature breakage.
+- HTML included structure, inline styles, and script-heavy logic.
+- Runtime behavior, state handling, analytics, and orchestration lived in tightly coupled sections.
+- Class names suggested separation of concerns, but file boundaries were not enforcing those boundaries.
+- Direct DOM coupling made testing, onboarding, and isolated debugging more difficult.
 
-## 5) Next Upgrades Suggested
-- Introduce event bus (pub/sub) for inter-module coordination.
-- Add unit tests for analytics, penalty, and anti-sandbag logic.
-- Add linting/formatting and CI checks.
-- Split `app.js` by domain classes into module files with ES module imports.
+## 2) Current Baseline Architecture
+
+The project now has a clearer separation between shell, styling, and behavior:
+
+- `index.html` → application shell and mount points
+- `assets/css/app.css` → centralized styling
+- `assets/js/app.js` → current runtime logic and managers
+
+This gives the app a stable baseline while preserving behavior.
+
+## 3) Architectural Principles
+
+The ongoing direction follows these principles:
+
+1. **Behavior preservation first**: avoid regressions while extracting modules.
+2. **Explicit ownership**: each module owns a bounded responsibility.
+3. **Local-first reliability**: keep storage contracts stable through migration.
+4. **Incremental extraction**: split by domain, not by arbitrary file size.
+5. **Testability**: reduce hidden coupling to make logic unit-test friendly.
+
+## 4) Proposed Module Topology
+
+Target folder responsibilities:
+
+- `core/` → state model and shared state lifecycle
+- `ui/` → shell management and progressive disclosure views
+- `execution/` → execution mode helpers and focus workflows
+- `shadow-engine/` → benchmark logic and comparison adapters
+- `trainer/` → recommendation logic and behavior nudges
+- `analytics/` → KPI aggregation and historical insights
+- `services/` → synchronization and integration services
+
+## 5) Integration Strategy
+
+- Keep a single top-level controller for app startup and wiring.
+- Use state-centric interfaces between modules (instead of implicit DOM reach-ins).
+- Preserve existing storage key contracts during migration.
+- Introduce explicit manager APIs before moving logic into separate files.
+
+## 6) Migration Phases
+
+### Phase 1 (Completed Baseline)
+- Externalized CSS and JS from HTML shell.
+- Established clearer top-level directories by responsibility.
+
+### Phase 2 (In Progress / Recommended)
+- Extract state bootstrap and app-wide state transitions to `core/state-manager.js`.
+- Move UI shell orchestration to `ui/shell-manager.js`.
+- Centralize synchronization behavior in `services/state-sync.js`.
+
+### Phase 3 (Recommended Next)
+- Split major domains from `assets/js/app.js` into dedicated modules.
+- Introduce a lightweight event bus/pub-sub layer for cross-domain events.
+- Add domain-focused tests (analytics, shadow benchmark, anti-sandbag rules).
+
+## 7) Expected Outcomes
+
+- Lower regression risk through smaller, purpose-specific modules
+- Faster onboarding for contributors
+- Improved maintainability and debuggability
+- Better readiness for CI checks, linting, and future API integration
